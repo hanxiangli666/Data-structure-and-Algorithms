@@ -2,7 +2,7 @@
   "code-runner.runInTerminal": true,
   "code-runner.saveFileBeforeRun": true,
   "code-runner.executorMap": {
-    "cpp": "cd $dir ; if (-not (Test-Path 'build')) { New-Item -ItemType Directory -Path 'build' | Out-Null } ; g++ \"$fileName\" -o \"build\\$fileNameWithoutExt.exe\" ; if ($?) { .\\build\\$fileNameWithoutExt.exe }",
+    "cpp": "cd $dir ; if (-not (Test-Path 'build')) { New-Item -ItemType Directory -Path 'build' | Out-Null } ; & \"D:\\AskManyAI\\ucrt64\\bin\\g++.exe\" -std=c++20 -g \"$fileName\" -o \"build\\$fileNameWithoutExt.exe\" ; if ($?) { .\\build\\$fileNameWithoutExt.exe }",
     "java": "cd $dir ; if (-not (Test-Path 'build')) { New-Item -ItemType Directory -Path 'build' | Out-Null } ; javac -d build \"$fileName\" ; if ($?) { java -cp build \"$fileNameWithoutExt\" }",
     "go": "cd $dir ; if (-not (Test-Path 'build')) { New-Item -ItemType Directory -Path 'build' | Out-Null } ; go build -o \"build\\$fileNameWithoutExt.exe\" \"$fileName\" ; if ($?) { .\\build\\$fileNameWithoutExt.exe }"
   }
