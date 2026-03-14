@@ -13,7 +13,10 @@
                 "${fileDirname}\\${fileBasenameNoExtension}.exe"
             ],
             "options": {
-                "cwd": "${fileDirname}"
+                "cwd": "${fileDirname}",
+                "env": {
+                    "PATH": "D:\\AskManyAI\\ucrt64\\bin;${env:PATH}"
+                }
             },
             "problemMatcher": [
                 "$gcc"
