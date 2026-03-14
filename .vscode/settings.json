@@ -2,8 +2,8 @@
   "code-runner.runInTerminal": true,
   "code-runner.saveFileBeforeRun": true,
   "code-runner.executorMap": {
-    "cpp": "$env:PATH = \"D:\\AskManyAI\\ucrt64\\bin;\" + $env:PATH ; cd $dir ; if (-not (Test-Path 'build')) { New-Item -ItemType Directory -Path 'build' | Out-Null } ; & \"D:\\AskManyAI\\ucrt64\\bin\\g++.exe\" -std=c++20 -g \"$fileName\" -o \"build\\$fileNameWithoutExt.exe\" ; if ($?) { .\\build\\$fileNameWithoutExt.exe }",
+    "cpp": "$env:PATH = \"D:\\AskManyAI\\ucrt64\\bin;\" + $env:PATH ; cd $dir ; if (-not (Test-Path 'build')) { New-Item -ItemType Directory -Path 'build' | Out-Null } ; & \"D:\\AskManyAI\\ucrt64\\bin\\g++.exe\" -std=c++20 -g \"$fileName\" -o \"build\\$fileNameWithoutExt.exe\" ; if ($?) { & \".\\build\\$fileNameWithoutExt.exe\" }",
     "java": "$env:PATH = \"D:\\JDK\\bin;\" + $env:PATH ; cd $dir ; if (-not (Test-Path 'build')) { New-Item -ItemType Directory -Path 'build' | Out-Null } ; javac -d build \"$fileName\" ; if ($?) { java -cp build \"$fileNameWithoutExt\" }",
-    "go": "$env:PATH = \"E:\\06_DevTools\\Go\\bin;\" + $env:PATH ; cd $dir ; if (-not (Test-Path 'build')) { New-Item -ItemType Directory -Path 'build' | Out-Null } ; go build -o \"build\\$fileNameWithoutExt.exe\" \"$fileName\" ; if ($?) { .\\build\\$fileNameWithoutExt.exe }"
+    "go": "$env:PATH = \"E:\\06_DevTools\\Go\\bin;\" + $env:PATH ; cd $dir ; if (-not (Test-Path 'build')) { New-Item -ItemType Directory -Path 'build' | Out-Null } ; go build -o \"build\\$fileNameWithoutExt.exe\" \"$fileName\" ; if ($?) { & \".\\build\\$fileNameWithoutExt.exe\" }"
   }
 }
