@@ -1,0 +1,32 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "type": "cppbuild",
+      "label": "C/C++: g++.exe 生成活动文件",
+      "command": "D:\\AskManyAI\\ucrt64\\bin\\g++.exe",
+      "args": [
+        "-fdiagnostics-color=always",
+        "-std=c++20",
+        "-g",
+        "${file}",
+        "-o",
+        "${workspaceFolder}\\build\\${fileBasenameNoExtension}.exe"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "PATH": "D:\\AskManyAI\\ucrt64\\bin;${env:PATH}"
+        }
+      },
+      "problemMatcher": [
+        "$gcc"
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "detail": "ICPC 竞赛模式：输出到 build 目录"
+    }
+  ]
+}

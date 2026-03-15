@@ -1,0 +1,15 @@
+{
+  "vim.enable": true,
+  "editor.quickSuggestions": {
+    "other": false,
+    "comments": false,
+    "strings": false
+  },
+  "editor.suggestOnTriggerCharacters": false,
+  "editor.parameterHints.enabled": false,
+  "code-runner.runInTerminal": true,
+  "code-runner.saveFileBeforeRun": true,
+  "code-runner.executorMap": {
+    "cpp": "$env:PATH = \"D:\\AskManyAI\\ucrt64\\bin;\" + $env:PATH ; cd $dir ; if (-not (Test-Path 'build')) { New-Item -ItemType Directory -Path 'build' | Out-Null } ; & \"D:\\AskManyAI\\ucrt64\\bin\\g++.exe\" -std=c++20 -g \"$fileName\" -o \"build\\$fileNameWithoutExt.exe\" ; if ($?) { & \".\\build\\$fileNameWithoutExt.exe\" }"
+  }
+}
