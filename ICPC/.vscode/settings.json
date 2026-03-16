@@ -1,5 +1,4 @@
 {
-  "vim.enable": true,
   "editor.quickSuggestions": {
     "other": false,
     "comments": false,
@@ -15,6 +14,8 @@
   "github.copilot.enable": {
     "*": false
   },
+  "C_Cpp.autocomplete": "disabled",
+  "C_Cpp.intelliSenseEngine": "disabled",
   "code-runner.runInTerminal": true,
   "code-runner.saveFileBeforeRun": true,
   "code-runner.executorMap": {
