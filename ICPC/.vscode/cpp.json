@@ -1,0 +1,28 @@
+{
+  "ICPC C++ 模板": {
+    "prefix": "template",
+    "body": [
+      "#include <iostream>",
+      "#include <vector>",
+      "#include <algorithm>",
+      "#include <string>",
+      "#include <numeric>",
+      "#include <cmath>",
+      "using namespace std;",
+      "",
+      "typedef long long ll;  // 以后写ll就是long long",
+      "",
+      "const int MOD = 1e9 + 7;",
+      "",
+      "int main() {",
+      "    ios::sync_with_stdio(false);",
+      "    cin.tie(nullptr);",
+      "",
+      "    // 在这里写题目逻辑",
+      "",
+      "    return 0;",
+      "}"
+    ],
+    "description": "ICPC C++ 竞赛模板"
+  }
+}
