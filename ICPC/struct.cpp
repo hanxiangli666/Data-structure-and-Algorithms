@@ -7,25 +7,28 @@ struct Student
 {
     string name;
     double score;
-}
+};
 
-cin >> n;
-vector<Student> students[n];
-for (int i = 0; i < n; i++) 
+int main()
 {
-    cin >> s[i];
-}
+    int n;
+    cin >> n;
+    vector<Student> students(n);
+    for (int i = 0; i < n; i++)
+    {
+        cin >> students[i].name >> students[i].score;
+    }
 
-int main() {
-    if (a.score != b.score) 
+    sort(students.begin(), students.end(), [](const Student &a, const Student &b) {
+        if (a.score != b.score)
+            return a.score > b.score;
+        else
+            return a.name < b.name;
+    });
+
+    for (int i = 0; i < n; i++)
     {
-    sort(students.begin(), students.end(), [](Student &a, Student &b) {
-        return a.score > b.score;
-    })
-    }   
-    else
-    {
-        sort()
+        cout << students[i].name << " " << students[i].score << endl;
     }
     return 0;
 }

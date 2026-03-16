@@ -1,17 +1,24 @@
 #include <iostream>
+#include <vector>
+#include <algorithm>
 using namespace std;
 
-cin >> n;
-vector<int> a(n);
-for (int i = 0; i < n; i++) 
+int main()
 {
-    cin >> a[i];
-}
+    int n;
+    cin >> n;
+    vector<int> a(n);
+    for (int i = 0; i < n; i++)
+    {
+        cin >> a[i];
+    }
 
-sort(a.begin(), a.end());
-a.erase(unique(a.begin(), a.end()), a.end());
+    sort(a.begin(), a.end());
+    a.erase(unique(a.begin(), a.end()), a.end());
 
-for (int i = 0; i < n; i++)
-{
-    cout << a[i] << endl;
+    for (int i = 0; i < (int)a.size(); i++)
+    {
+        cout << a[i] << endl;
+    }
+    return 0;
 }
