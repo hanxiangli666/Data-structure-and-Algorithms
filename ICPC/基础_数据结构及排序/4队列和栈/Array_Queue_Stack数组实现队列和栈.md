@@ -1,0 +1,225 @@
+# 用数组实现队列和栈
+
+> 前置知识：队列/栈基本原理、环形数组技巧
+
+---
+
+## 目录
+
+1. [核心思路](#1-核心思路)
+2. [用数组实现栈](#2-用数组实现栈)
+3. [用数组实现队列](#3-用数组实现队列)
+4. [数组 vs 链表实现对比](#4-数组-vs-链表实现对比)
+
+---
+
+## 1. 核心思路
+
+数组的头尾操作复杂度不一样：
+
+```
+数组尾部插入/删除：O(1)   ← 直接操作，不需要搬移数据
+数组头部插入/删除：O(N)   ← 需要搬移所有数据
+```
+
+所以：
+
+```
+实现栈：直接用普通数组，把尾部作为栈顶，O(1)
+
+实现队列：需要头尾都是 O(1)
+          → 用环形数组（CycleArray），头尾操作都是 O(1)
+```
+
+---
+
+## 2. 用数组实现栈
+
+**设计：把数组尾部作为栈顶。**
+
+```
+数组：[1, 2, 3, 4]
+                ↑
+              栈顶（push/pop 都在这里）
+
+push(5)：尾部加入5  → [1, 2, 3, 4, 5]
+pop()：  尾部取出5  → [1, 2, 3, 4]
+peek()： 看尾部的4，不删除
+```
+
+### 完整代码
+
+```cpp
+#include <iostream>
+#include <vector>
+using namespace std;
+
+template<typename E>
+class MyArrayStack {
+private:
+    vector<E> arr;   // 底层用动态数组
+
+public:
+    // 向栈顶插入，O(1)
+    void push(const E& e) {
+        arr.push_back(e);    // 数组尾部 = 栈顶
+    }
+
+    // 从栈顶删除并返回，O(1)
+    E pop() {
+        E topElement = arr.back();  // 先取出栈顶的值
+        arr.pop_back();             // 再删除
+        return topElement;
+    }
+
+    // 查看栈顶元素（不删除），O(1)
+    E peek() const {
+        return arr.back();
+    }
+
+    // 返回元素个数，O(1)
+    int size() const {
+        return arr.size();
+    }
+};
+
+int main() {
+    MyArrayStack<int> stack;
+    stack.push(1);
+    stack.push(2);
+    stack.push(3);
+
+    cout << stack.peek() << endl;  // 3
+    cout << stack.pop()  << endl;  // 3
+    cout << stack.pop()  << endl;  // 2
+    cout << stack.pop()  << endl;  // 1
+}
+```
+
+### 为什么不能用数组头部作为栈顶？
+
+```
+如果把头部作为栈顶：
+
+push(4)：在头部插入，需要把所有元素往后移一位，O(N)
+         [4, 1, 2, 3]
+          ↑ 插入时搬移了3个元素
+
+pop()：  从头部删除，需要把所有元素往前移一位，O(N)
+
+不符合栈 O(1) 的要求，所以不行。
+```
+
+**除非用环形数组（CycleArray），** 它的头部操作也是 O(1)，这样头部也可以作为栈顶。
+
+---
+
+## 3. 用数组实现队列
+
+队列需要**一端插入，另一端删除**，两端都要 O(1)。
+
+普通数组做不到（头部操作是 O(N)），所以用**环形数组 CycleArray**：
+
+```
+环形数组：
+  addLast / removeFirst  → 都是 O(1)
+
+队列设计：
+  push(入队) → addLast   （队尾插入）
+  pop(出队)  → removeFirst（队头删除）
+```
+
+### 完整代码
+
+```cpp
+#include <iostream>
+using namespace std;
+// 需要引入之前实现的 CycleArray
+
+template<typename E>
+class MyArrayQueue {
+private:
+    CycleArray<E> arr;   // 底层用环形数组
+
+public:
+    // 向队尾插入，O(1)
+    void push(E e) {
+        arr.addLast(e);
+    }
+
+    // 从队头删除并返回，O(1)
+    E pop() {
+        return arr.removeFirst();
+    }
+
+    // 查看队头元素（不删除），O(1)
+    E peek() {
+        return arr.getFirst();
+    }
+
+    // 返回元素个数，O(1)
+    int size() {
+        return arr.size();
+    }
+};
+
+int main() {
+    MyArrayQueue<int> queue;
+    queue.push(1);
+    queue.push(2);
+    queue.push(3);
+
+    cout << queue.peek() << endl;  // 1（队头）
+    cout << queue.pop()  << endl;  // 1（先进先出）
+    cout << queue.pop()  << endl;  // 2
+    cout << queue.peek() << endl;  // 3
+}
+```
+
+### 为什么队列不能用普通数组？
+
+```
+队列需要：尾部插入 O(1)，头部删除 O(1)
+
+普通数组：
+  尾部插入 → O(1) ✅
+  头部删除 → O(N) ❌（要搬移所有元素）
+
+环形数组：
+  尾部插入 → O(1) ✅
+  头部删除 → O(1) ✅（只移动 start 指针，不搬移数据）
+```
+
+---
+
+## 4. 数组 vs 链表实现对比
+
+| | 数组实现 | 链表实现 |
+|--|:-------:|:-------:|
+| **栈** push/pop | O(1) | O(1) |
+| **队列** push/pop | O(1)（需环形数组） | O(1) |
+| 内存占用 | 紧凑，缓存友好 | 每个节点多存指针 |
+| 扩容 | 需要（偶尔 O(N)） | 不需要 |
+| 实现复杂度 | 栈简单，队列需环形数组 | 两者都简单 |
+
+**实际使用建议：**
+
+```
+栈：用数组实现更简单，直接用 vector 的 push_back/pop_back
+队列：用链表实现更直接，直接用 list 或 deque
+
+C++ STL 中：
+  stack  底层默认用 deque（双端队列，本质是分块数组）
+  queue  底层默认用 deque
+```
+
+---
+
+> 📌 **核心总结**
+>
+> ```
+> 用数组实现栈：尾部作为栈顶，直接用 vector，O(1)
+> 用数组实现队列：必须用环形数组，让头尾操作都是 O(1)
+>
+> 关键限制：普通数组头部操作是 O(N)，所以队列必须用环形数组
+> ```
