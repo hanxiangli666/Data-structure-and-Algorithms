@@ -164,7 +164,7 @@ for (int& x : v) { ... }           // 可修改遍历
 for (int i = 0; i < v.size(); i++) // 索引遍历
 ```
 
-**二维 vector（矩阵/邻接表）：**
+**二维 vector（矩阵/邻接表）**
 
 ```cpp
 // 创建 n×m 的矩阵，全为0
@@ -842,18 +842,18 @@ vector<int> dijkstra(vector<vector<Edge>>& graph, int src) {
 
 **你看，整个 Dijkstra 算法用到的 C++ 知识：**
 
-| 用到的知识 | 你学过了吗？ |
-|-----------|------------|
-| struct 定义 | ✅ basic14 |
-| vector 创建和使用 | ✅ basic1 |
-| 函数定义和返回值 | ✅ basic6 |
-| 传引用 `&` | ✅ basic1 |
-| for 范围循环 | ✅ basic1 |
-| auto 和结构化绑定 | ✅ basic2 |
-| pair 的 first/second | ✅ basic2 |
-| priority_queue | ✅ basic28 |
-| while 循环 | ✅ basic1 |
-| continue | ✅ basic29 |
+| 用到的知识           | 你学过了吗？ |
+| -------------------- | ------------ |
+| struct 定义          | ✅ basic14   |
+| vector 创建和使用    | ✅ basic1    |
+| 函数定义和返回值     | ✅ basic6    |
+| 传引用 `&`         | ✅ basic1    |
+| for 范围循环         | ✅ basic1    |
+| auto 和结构化绑定    | ✅ basic2    |
+| pair 的 first/second | ✅ basic2    |
+| priority_queue       | ✅ basic28   |
+| while 循环           | ✅ basic1    |
+| continue             | ✅ basic29   |
 
 **你什么都学过了！只是没有把它们组合起来用过。**
 
@@ -887,14 +887,14 @@ vector<int> dijkstra(vector<vector<Edge>>& graph, int src) {
 
 ## 附录：所有容器操作速查表
 
-| 操作 | vector | stack | queue | priority_queue | unordered_map | unordered_set | map/set |
-|------|--------|-------|-------|----------------|---------------|---------------|---------|
-| 加入 | push_back | push | push | push | mp[k]=v | insert | insert |
-| 删除 | pop_back | pop | pop | pop | erase(k) | erase(x) | erase |
-| 看头/顶 | front() | top() | front() | top() | — | — | begin() |
-| 看尾 | back() | — | back() | — | — | — | rbegin() |
-| 大小 | size() | size() | size() | size() | size() | size() | size() |
-| 判空 | empty() | empty() | empty() | empty() | empty() | empty() | empty() |
-| 随机访问 | v[i] ✅ | ❌ | ❌ | ❌ | mp[k] | ❌ | — |
-| 判断存在 | find算法 | ❌ | ❌ | ❌ | count(k) | count(x) | count |
-| 清空 | clear() | — | — | — | clear() | clear() | clear() |
+| 操作     | vector    | stack   | queue   | priority_queue | unordered_map | unordered_set | map/set  |
+| -------- | --------- | ------- | ------- | -------------- | ------------- | ------------- | -------- |
+| 加入     | push_back | push    | push    | push           | mp[k]=v       | insert        | insert   |
+| 删除     | pop_back  | pop     | pop     | pop            | erase(k)      | erase(x)      | erase    |
+| 看头/顶  | front()   | top()   | front() | top()          | —            | —            | begin()  |
+| 看尾     | back()    | —      | back()  | —             | —            | —            | rbegin() |
+| 大小     | size()    | size()  | size()  | size()         | size()        | size()        | size()   |
+| 判空     | empty()   | empty() | empty() | empty()        | empty()       | empty()       | empty()  |
+| 随机访问 | v[i] ✅   | ❌      | ❌      | ❌             | mp[k]         | ❌            | —       |
+| 判断存在 | find算法  | ❌      | ❌      | ❌             | count(k)      | count(x)      | count    |
+| 清空     | clear()   | —      | —      | —             | clear()       | clear()       | clear()  |
