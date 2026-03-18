@@ -8,6 +8,8 @@
 
 ## 一、什么问题需要并查集？
 
+你可以把并查集当成“连通关系的实时管理器”。它最厉害的地方不是建图，而是在大量动态操作下还能快速回答“这俩是不是一伙”。很多图题看起来像 BFS/DFS，其实本质是动态连通性，用并查集会更直接。
+
 ### 1.1 动态连通性问题
 
 给你一堆节点，不断执行「连接」操作，同时随时查询：
@@ -40,6 +42,8 @@
 
 用 BFS/DFS 判断连通性太慢了！并查集把这三个操作全部做到 O(1)。
 
+> 💡 **老师提醒：** 这里的 O(1) 是竞赛里的“均摊近似常数”，严格说会写成 $O(\alpha(N))$。
+
 ### 1.3 实际应用
 
 | 场景 | 说明 |
@@ -53,17 +57,33 @@
 
 ## 二、并查集的 API
 
+**第一步：最简单的例子（用你能想到的最日常的比喻）**
+
+```cpp
+int teamA = 1;                    // A 同学所在队伍编号
+int teamB = 2;                    // B 同学所在队伍编号
+bool same = (teamA == teamB);     // 判断是否同队
+```
+
+**第二步：过渡说明（1-2 句话）**
+
+> 这三行就是并查集 API 的目标：合并队伍、判断同队、统计队伍数量。下面接口把这些动作标准化了。
+
+**第三步：给原始代码加注释**
+
 ```cpp
 class UF {
 public:
-    UF(int n);                    // 初始化 n 个节点，O(n)
-    void union_(int p, int q);    // 连接 p 和 q，O(1)
-    bool connected(int p, int q); // p 和 q 是否连通，O(1)
-    int count();                  // 连通分量数量，O(1)
+    UF(int n);                     // 初始化 n 个节点，开始时各自独立
+    void union_(int p, int q);     // 合并 p 和 q 所在集合
+    bool connected(int p, int q);  // 查询 p 和 q 是否在同一集合
+    int count();                   // 返回当前连通分量个数
 };
 ```
 
 注意 C++ 中 `union` 是关键字，所以一般用 `union_` 或 `merge` 代替。
+
+*就像“登记结婚”和“查询户口簿”的区别*：一个是合并关系，一个是查询关系。
 
 ---
 
@@ -101,12 +121,26 @@ union(0, 2)：0 的根是 1，2 的根是 3 → 把 1 的树挂到 3 下面
 
 顺着 parent 指针一路向上走，直到根节点（parent 指向自己的节点）。
 
+**第一步：最简单的例子（用你能想到的最日常的比喻）**
+
+```cpp
+int boss = 5;                     // 先假设老大是 5
+while (boss != leader[boss])      // 只要不是最终老大
+    boss = leader[boss];          // 就继续向上找
+```
+
+**第二步：过渡说明（1-2 句话）**
+
+> `find` 就是在 parent 数组里“顺藤摸瓜找老大”。下面代码是最朴素写法，逻辑最容易理解。
+
+**第三步：给原始代码加注释**
+
 ```cpp
 int find(int x) {
     while (parent[x] != x) {
-        x = parent[x];    // 一路向上
+        x = parent[x];    // 沿 parent 指针一直向上找根
     }
-    return x;              // 到达根节点
+    return x;              // 返回根节点编号
 }
 ```
 
@@ -114,9 +148,23 @@ int find(int x) {
 
 如果 p 和 q 的根节点相同 → 在同一棵树 → 连通。
 
+**第一步：最简单的例子（用你能想到的最日常的比喻）**
+
+```cpp
+int bossP = 3;                     // p 的老大
+int bossQ = 3;                     // q 的老大
+bool same = (bossP == bossQ);      // 老大相同就同组
+```
+
+**第二步：过渡说明（1-2 句话）**
+
+> 并查集判断连通不需要整图搜索，只比根节点是否相同。下面实现正是这一句判断。
+
+**第三步：给原始代码加注释**
+
 ```cpp
 bool connected(int p, int q) {
-    return find(p) == find(q);
+    return find(p) == find(q);      // 根相同 => 连通
 }
 ```
 
@@ -124,19 +172,46 @@ bool connected(int p, int q) {
 
 找到 p 和 q 各自的根节点，把一棵树的根挂到另一棵树的根下面。
 
+**第一步：最简单的例子（用你能想到的最日常的比喻）**
+
+```cpp
+int rootA = 1;                     // A 组代表
+int rootB = 4;                     // B 组代表
+if (rootA != rootB) parent[rootA] = rootB; // 把 A 组合并到 B 组
+```
+
+**第二步：过渡说明（1-2 句话）**
+
+> `union` 的本质就是“连代表”。下面代码先判重，再执行合并并维护连通分量个数。
+
+**第三步：给原始代码加注释**
+
 ```cpp
 void union_(int p, int q) {
     int rootP = find(p);
     int rootQ = find(q);
-    if (rootP == rootQ) return;   // 已经连通，不用合并
-    parent[rootP] = rootQ;        // 把 p 的树挂到 q 的树下
-    cnt--;                        // 连通分量减 1
+    if (rootP == rootQ) return;    // 已经在同一集合，无需合并
+    parent[rootP] = rootQ;         // 把 rootP 挂到 rootQ 下面
+    cnt--;                         // 连通分量数量减少 1
 }
 ```
 
 #### count()：连通分量数量
 
 维护一个计数器，初始值为 n，每次 union 成功就减 1。
+
+**第一步：最简单的例子（用你能想到的最日常的比喻）**
+
+```cpp
+int groups = 5;                   // 初始 5 个小组
+groups--;                         // 成功合并一次后变成 4 组
+```
+
+**第二步：过渡说明（1-2 句话）**
+
+> 这个接口看起来简单，但在题目里非常实用。下面实现直接返回维护好的计数器。
+
+**第三步：给原始代码加注释**
 
 ```cpp
 int count() { return cnt; }
@@ -146,14 +221,30 @@ int count() { return cnt; }
 
 不需要真的建树（TreeNode 之类的），只需要一个 `parent` 数组：
 
+**第一步：最简单的例子（用你能想到的最日常的比喻）**
+
+```cpp
+vector<int> parent(4);            // 4 个人的“直属上级”表
+for (int i = 0; i < 4; i++)       // 初始化时每个人先当自己的组长
+    parent[i] = i;
+```
+
+**第二步：过渡说明（1-2 句话）**
+
+> 你不用真的搭树节点对象，用一个一维数组就够了。下面代码是并查集最关键的初始化步骤。
+
+**第三步：给原始代码加注释**
+
 ```cpp
 vector<int> parent(n);
 
 // 初始化：每个节点的父节点是自己（自己就是根）
 for (int i = 0; i < n; i++) {
-    parent[i] = i;
+    parent[i] = i;                 // 每个节点先单独成集合
 }
 ```
+
+> ✅ 到这里你已经理解并查集骨架了，后面优化只是“让它跑更快”。
 
 ```
 parent 数组：[0, 1, 2, 3, 4]   （初始：每个人的 parent 是自己）
@@ -197,6 +288,19 @@ union(0,1), union(1,2), union(2,3), union(3,4)
 
 **思路**：union 时，把**小树挂到大树**下面，而不是随便挂。
 
+**第一步：最简单的例子（用你能想到的最日常的比喻）**
+
+```cpp
+int small = 2, big = 7;            // 两个队伍人数
+if (small < big) parentSmall = rootBig; // 小队并到大队
+```
+
+**第二步：过渡说明（1-2 句话）**
+
+> 这样做的目的只有一个：控制树高，避免 `find` 走太多步。下面代码就是这个策略的标准写法。
+
+**第三步：给原始代码加注释**
+
 ```cpp
 vector<int> size(n, 1);   // 每棵树的节点数
 
@@ -206,11 +310,11 @@ void union_(int p, int q) {
     
     // 小树挂到大树下面
     if (size[rootP] < size[rootQ]) {
-        parent[rootP] = rootQ;
-        size[rootQ] += size[rootP];
+        parent[rootP] = rootQ;          // rootP 所在小树挂到 rootQ
+        size[rootQ] += size[rootP];     // 更新新根的规模
     } else {
-        parent[rootQ] = rootP;
-        size[rootP] += size[rootQ];
+        parent[rootQ] = rootP;          // 反过来挂
+        size[rootP] += size[rootQ];     // 同步更新规模
     }
     cnt--;
 }
@@ -236,14 +340,29 @@ union(2,3): 3 挂到 1（{0,1,2} 更大）
 
 **思路**：在 find 的过程中，顺便把路径上的所有节点**直接挂到根节点下面**。
 
+**第一步：最简单的例子（用你能想到的最日常的比喻）**
+
+```cpp
+int root = find(9);                  // 先找到 9 号的最终组长
+parent[9] = root;                    // 以后 9 号直接指向组长
+```
+
+**第二步：过渡说明（1-2 句话）**
+
+> 路径压缩相当于“走过一次就修一条高速”。下面递归写法会在回溯时把整条链一次性压扁。
+
+**第三步：给原始代码加注释**
+
 ```cpp
 int find(int x) {
     if (parent[x] != x) {
-        parent[x] = find(parent[x]);   // 递归找根，顺便把自己直接连到根
+        parent[x] = find(parent[x]);    // ⚠️ 路径压缩：递归时直接挂到根
     }
-    return parent[x];
+    return parent[x];                   // 返回根节点
 }
 ```
+
+> 💡 **老师提醒：** 递归版 `find` 要确保终止条件正确（`parent[x] == x`），否则会栈溢出。
 
 **效果**：不管树原来多高，一次 find 之后整条路径都被压平为高度 2。
 
@@ -277,6 +396,22 @@ int find(int x) {
 
 ## 五、完整并查集模板（竞赛用）
 
+这段模板建议你手写至少 3 遍，直到不看笔记也能默写。比赛里并查集通常是“送分工具题”，模板一旦写错会非常可惜。先稳，再快。
+
+**第一步：最简单的例子（用你能想到的最日常的比喻）**
+
+```cpp
+vector<int> parent(3);               // 3 个人的上级表
+for (int i = 0; i < 3; i++) parent[i] = i; // 初始各自为组
+parent[0] = 1;                       // 把 0 合并进 1 的组
+```
+
+**第二步：过渡说明（1-2 句话）**
+
+> 这几行是并查集最小可运行骨架。下面完整模板把初始化、查询、合并、计数全部封装好了，能直接用于题目。
+
+**第三步：给原始代码加注释**
+
 ```cpp
 class UF {
     vector<int> parent;
@@ -285,13 +420,13 @@ class UF {
 
 public:
     UF(int n) : parent(n), size(n, 1), cnt(n) {
-        for (int i = 0; i < n; i++) parent[i] = i;
+        for (int i = 0; i < n; i++) parent[i] = i; // 初始每个节点自成集合
     }
 
     // 路径压缩的 find
     int find(int x) {
         if (parent[x] != x) {
-            parent[x] = find(parent[x]);  // 路径压缩
+            parent[x] = find(parent[x]);   // 路径压缩
         }
         return parent[x];
     }
@@ -308,16 +443,18 @@ public:
             parent[rootQ] = rootP;
             size[rootP] += size[rootQ];
         }
-        cnt--;
+        cnt--;                            // 成功合并一次，分量数减一
     }
 
     bool connected(int p, int q) {
-        return find(p) == find(q);
+        return find(p) == find(q);        // 根相同即连通
     }
 
-    int count() { return cnt; }
+    int count() { return cnt; }           // O(1) 返回分量数
 };
 ```
+
+> ✅ 你能把这个模板顺手写出来，Kruskal、连通性题目就都有底了。
 
 **这个模板要能默写出来**，竞赛中直接拿来用。
 

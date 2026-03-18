@@ -15,6 +15,10 @@
 
 这两条结论在整个算法学习中会反复用到，先记住，下面用例题帮你理解为什么。
 
+你现在先把它当成一条“选工具”的口诀，而不是死记定义。因为做题时最怕的不是不会写代码，而是第一步就选错方向，后面越写越乱。*就像你去一个陌生小区找最近便利店，BFS 像一圈一圈找，DFS 像先沿一条路走到底再回来。*前者更容易先找到“最近”，后者更容易把“所有路线”都走全。
+
+> 💡 **老师提醒：** 看到“最短、最近、最少步数”这些关键词时，先想 BFS，再考虑别的做法。
+
 ---
 
 ## 二、例题：二叉树的最小深度（LeetCode 111）
@@ -76,36 +80,49 @@ DFS 的遍历路线（先左后右）：
 
 ### 3.2 代码
 
+**第一步：最简单的例子（用你能想到的最日常的比喻）**
+
 ```cpp
-class Solution {
+int floor = 0;                 // 你现在在 0 楼，先准备一个楼层计数器
+floor++;                       // 走进一间房，相当于上了一层
+if (true) floor = min(floor, 2); // 发现目标后，尝试更新“目前最小楼层”
+floor--;                       // 走出这间房，回到上一层
+```
+
+> 上面这个小例子演示的就是“进入时加深度、离开时减深度”的回溯思想；下面的真实代码只是把“房间”换成了“树节点”。
+
+**第三步：给原始代码加注释**
+
+```cpp
+class Solution {                                        // 定义题解类
 private:
-    int minDepthValue = INT_MAX;  // 记录最小深度，初始化为最大值
-    int currentDepth = 0;         // 记录当前走到第几层
+  int minDepthValue = INT_MAX;  // 记录最小深度，初始化为最大值
+  int currentDepth = 0;         // 记录当前走到第几层
 
 public:
-    int minDepth(TreeNode* root) {
-        if (root == nullptr) return 0;
-        traverse(root);
-        return minDepthValue;
+  int minDepth(TreeNode* root) {                     // 题目要求的入口函数
+    if (root == nullptr) return 0;                 // 空树深度是 0
+    traverse(root);                                // 从根节点开始 DFS
+    return minDepthValue;                          // 返回遍历后得到的最小深度
+  }
+
+  void traverse(TreeNode* root) {                    // DFS 遍历函数
+    if (root == nullptr) return;                   // 走到空节点就返回
+
+    // 【前序位置】进入节点，深度 +1
+    currentDepth++;                                // 进入当前节点，深度加一
+
+    // 判断是否是叶子节点（左右孩子都为空）
+    if (root->left == nullptr && root->right == nullptr) { // 同时没有左右孩子才是叶子
+      minDepthValue = min(minDepthValue, currentDepth);   // 用当前深度更新最小值
     }
 
-    void traverse(TreeNode* root) {
-        if (root == nullptr) return;
+    traverse(root->left);                          // 继续遍历左子树
+    traverse(root->right);                         // 继续遍历右子树
 
-        // 【前序位置】进入节点，深度 +1
-        currentDepth++;
-
-        // 判断是否是叶子节点（左右孩子都为空）
-        if (root->left == nullptr && root->right == nullptr) {
-            minDepthValue = min(minDepthValue, currentDepth);
-        }
-
-        traverse(root->left);
-        traverse(root->right);
-
-        // 【后序位置】离开节点，深度 -1（回溯）
-        currentDepth--;
-    }
+    // 【后序位置】离开节点，深度 -1（回溯）
+    currentDepth--;                                // 回到父节点前把深度恢复
+  }
 };
 ```
 
@@ -135,19 +152,39 @@ public:
 
 **类比**：你在爬楼梯探索一栋楼。每上一层楼（进入子节点）就在计数器上 +1，每下一层楼（返回父节点）就 -1。这样计数器永远显示你当前在第几层。
 
+你可以把它理解成“借出去再还回来”的过程：进入递归时借了一个深度，返回时就必须还掉一个深度。为什么要这么严谨？因为递归是共享同一个成员变量 `currentDepth`，不还回来会污染后面分支的计算。*就像你在黑板上记分，不擦掉上一题的分数，下一题就会全错。*
+
+> 💡 **老师提醒：** 只要你在递归里修改了共享状态（深度、路径、和），就要成对地“做修改”和“撤销修改”。
+
+> ✅ 你已经掌握了回溯最核心的一步：状态要可进可退。
+
 **C++ 知识点**：
 - `INT_MAX`：`<climits>` 中定义的 int 最大值（约 21 亿），用来初始化最小值
 - `min(a, b)`：返回两者中较小的那个
 
 ### 3.4 判断叶子节点
 
+**第一步：最简单的例子（用你能想到的最日常的比喻）**
+
 ```cpp
-if (root->left == nullptr && root->right == nullptr)
+bool hasLeft = false;                        // 左边没有路
+bool hasRight = false;                       // 右边也没有路
+if (!hasLeft && !hasRight) { }              // 两边都没路，说明到尽头（叶子）
+```
+
+> 这个小判断和下面的真实判断一一对应：变量名从 hasLeft/hasRight 换成了指针是否为空。
+
+**第三步：给原始代码加注释**
+
+```cpp
+if (root->left == nullptr && root->right == nullptr) // 左右孩子都为空，当前节点才是叶子节点
 ```
 
 叶子节点 = **左右孩子都为空**的节点。这是一个常见的判断条件，要记住。
 
 ⚠️ 常见错误：只判断 `root == nullptr` 就认为到底了。但 `nullptr` 不是叶子节点！`nullptr` 只是表示「这条路走不通」，叶子节点是一个**真实存在但没有孩子**的节点。
+
+这里你一定要区分“节点不存在”和“节点存在但没有孩子”这两件事。前者是空指针，后者是叶子节点。为什么会错？因为很多同学把递归终止条件和业务判断条件混在了一起。*就像“这个人不在教室”和“这个人坐在最后一排”不是同一件事。*
 
 ---
 
@@ -169,35 +206,48 @@ BFS 就像水波扩散，**一层一层向外推进**。第一次碰到叶子节
 
 ### 4.2 代码
 
+**第一步：最简单的例子（用你能想到的最日常的比喻）**
+
+```cpp
+queue<int> q;                  // 排队叫号：先准备队列
+q.push(1);                     // 1 号先入队
+int x = q.front(); q.pop();    // 叫到 1 号并让他离队
+if (x == 1) return;            // 第一次叫到目标号码就结束
+```
+
+> 这个小例子就是 BFS 的核心动作：入队、出队、按先来后到处理；下面的代码只是把“号码”换成“树节点”。
+
+**第三步：给原始代码加注释**
+
 ```cpp
 class Solution {
 public:
     int minDepth(TreeNode* root) {
-        if (root == nullptr) return 0;
+    if (root == nullptr) return 0;               // 空树最小深度为 0
         
-        queue<TreeNode*> q;
-        q.push(root);
-        int depth = 1;   // root 本身就是第 1 层
+    queue<TreeNode*> q;                           // 队列用于层序遍历
+    q.push(root);                                 // 根节点先入队
+    int depth = 1;   // root 本身就是第 1 层
         
-        while (!q.empty()) {
-            int sz = q.size();
+    while (!q.empty()) {                          // 只要队列非空就继续按层处理
+      int sz = q.size();                        // 当前层节点个数
             
             for (int i = 0; i < sz; i++) {
-                TreeNode* cur = q.front();
-                q.pop();
+        TreeNode* cur = q.front();            // 取出队首节点
+        q.pop();                              // 队首出队
                 
                 // 碰到叶子节点，立刻返回！
                 if (cur->left == nullptr && cur->right == nullptr) {
                     return depth;   // ← 提前结束，不用遍历完
                 }
                 
-                if (cur->left != nullptr)  q.push(cur->left);
-                if (cur->right != nullptr) q.push(cur->right);
+        if (cur->left != nullptr)  q.push(cur->left);   // 左孩子入队，留到下一层处理
+        if (cur->right != nullptr) q.push(cur->right);  // 右孩子入队，留到下一层处理
             }
             
-            depth++;
+      depth++;                                   // 一层处理完，深度加一
         }
-        return depth;
+    return depth;                                  // 理论兜底返回（正常会在叶子处提前返回）
     }
 };
 ```
@@ -222,6 +272,12 @@ depth = 2
 ```
 
 对比 DFS：DFS 需要遍历完 3 条路径（6 个节点）才能确定答案。BFS 只遍历了 2 个节点就结束了。
+
+你现在能看出“为什么最短路径偏向 BFS”了：它天然按距离增长的顺序搜索。只要题目目标是“最近那个”，你就能利用这个顺序直接提前结束。*就像电梯一层层停靠，先到的楼层一定更近。*
+
+> 💡 **老师提醒：** BFS 中 `int sz = q.size();` 必须在 for 循环前固定住，不能边遍历边读新大小，否则层数会乱。
+
+> ✅ 你已经学会了 BFS 最实用的技巧：按层处理 + 及时返回。
 
 ---
 
@@ -281,14 +337,30 @@ DFS 遍历路线：
 
 解决办法是用之前学的 BFS **写法三**，给每个节点附带一个 State，把完整的路径信息存进去：
 
+**第一步：最简单的例子（用你能想到的最日常的比喻）**
+
+```cpp
+struct Ticket { int id; int step; };       // 给每张票附带“编号+步数”两份信息
+Ticket t = {7, 3};                          // 7 号票，走了 3 步
+queue<Ticket> q; q.push(t);                 // 入队时把状态整体放进去
+```
+
+> 这个小例子和下面完全同构：下面只是把 `id` 换成树节点指针，把 `step` 换成完整路径。
+
+**第三步：给原始代码加注释**
+
 ```cpp
 struct State {
-    TreeNode* node;
-    vector<int> path;  // 从根到当前节点的完整路径
+  TreeNode* node;      // 当前访问到的节点
+  vector<int> path;    // 从根到当前节点的完整路径
 };
 ```
 
 但这样每个节点都要存一份完整路径的拷贝，既费内存又复杂。
+
+为什么说它麻烦？因为 BFS 队列里同时会有很多节点，每个节点都带一份 `vector<int>`，复制成本会明显上升。DFS 则只维护一条当前路径，走深和回退时原地改动，内存更省。*就像 BFS 是给每个快递都复印一份完整地址单，DFS 是手里拿一张地址单一路改写。*
+
+> 💡 **老师提醒：** 看到“要收集所有路径”时，优先想 DFS + 回溯；BFS 状态扩展通常会更重。
 
 ### 6.3 总结
 
