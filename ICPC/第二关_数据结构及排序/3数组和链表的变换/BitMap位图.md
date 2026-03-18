@@ -16,12 +16,28 @@
 
 ## 1. 为什么需要位图
 
+你先抓住一句话：位图不是为了“写起来酷”，而是为了“在超大数据下省内存”。
+当数据规模上到百万、千万时，内存往往比 CPU 更先成为瓶颈，这时候每个元素省下来的几个 bit 都很关键。
+*就像短途出门背双肩包和长途搬家开货车的区别*，平时你不用太重装备，但数据量一大就必须换方案。
+
 写算法时，经常用布尔数组记录哪些元素被访问过：
 
+**第一步：最简单的例子（用你能想到的最日常的比喻）**
+
 ```cpp
-vector<bool> visited(1000, false);
-visited[10] = true;
-visited[100] = true;
+vector<bool> box(5, false);   // 准备5个小盒子，先都标记为“没放东西”
+box[1] = true;                // 把1号盒子标记为“有东西”
+box[3] = true;                // 把3号盒子也标记为“有东西”
+```
+
+> 上面是“按编号给盒子做有/无标记”的最小版，下面的代码做的是同一件事，只是把盒子数量放大到 1000。
+
+**第三步：给原始代码加注释**
+
+```cpp
+vector<bool> visited(1000, false);  // 准备1000个访问标记位，初始都没访问
+visited[10] = true;                 // 把编号10标记为“访问过”
+visited[100] = true;                // 把编号100标记为“访问过”
 ```
 
 **问题：布尔数组太浪费内存。**
@@ -45,9 +61,15 @@ bool 只有 true / false 两种状态
 
 > ⚠️ 日常刷题用普通布尔数组就够了，只有处理**超大规模数据**（比如布隆过滤器）才需要位图。
 
+> 💡 **老师提醒：** 你做题时先估算数据范围，再决定要不要上位图。范围不大时，优先可读性更高的普通写法。
+
 ---
 
 ## 2. 位图的核心原理
+
+这一节的关键不是记住某个类型名，而是理解“一个 bit 就能表达真假”。
+你把存储单位从“字节”降到“位”，本质上是在做压缩存储，所以空间利用率会明显提升。
+*就像把一件衣服挂一个衣架和把八件轻薄衣服压缩进收纳袋的区别*，信息没变，但占用体积变小了。
 
 位图的思路：**用一个 long 类型的每个 bit 位来存一个布尔值。**
 
@@ -70,15 +92,33 @@ words[2]: bit0  bit1  bit2  ... bit63    （存索引 128~191）
 ...
 ```
 
+> ✅ 你已经走到“按位思考”这一步了，后面位运算会越来越顺。
+
 ---
 
 ## 3. 索引计算规则
 
+这部分就是把“一维编号”拆成“组号 + 组内偏移”。
+你只要先定位在哪个 word，再定位这个 word 的第几位，后面的 get/set/clear 都会自然成立。
+很多同学觉得这步抽象，其实它和二维数组定位完全同构，只是每行固定 64 列。
+
 给定一个 bitIndex，需要找到它在哪个 `words[i]` 的哪个 bit 位：
 
+**第一步：最简单的例子（用你能想到的最日常的比喻）**
+
 ```cpp
-int wordIndex = bitIndex / 64;   // 在第几个 words 元素
-int bitOffset = bitIndex % 64;   // 在该元素的第几个 bit
+int seat = 135;               // 手里有第135号座位号
+int row = seat / 64;          // 先算在第几排（每排64个座位）
+int col = seat % 64;          // 再算在这一排的第几个位置
+```
+
+> 上面是“座位号拆成排号和列号”，下面代码是同样的拆分，只是变量名换成了位图里的单词。
+
+**第三步：给原始代码加注释**
+
+```cpp
+int wordIndex = bitIndex / 64;   // 在第几个 unsigned long 元素（第几组）
+int bitOffset = bitIndex % 64;   // 在这一组里的第几个 bit 位（组内偏移）
 ```
 
 **举例：找第 135 个 bit：**
@@ -101,20 +141,50 @@ bitIndex=135 → 第 135/64=2 行，第 135%64=7 列
 
 ## 4. 三个核心操作
 
+这三个操作你可以当成一个固定模板来记：读某位、置某位、清某位。
+它们共同依赖“掩码”这个工具，所以你一旦吃透 `1ULL << bitOffset`，整套逻辑就会连起来。
+*就像你有一把只照某个位置的手电筒*，照哪里、改哪里，都由这把手电筒决定。
+
+> 💡 **老师提醒：** 位运算最怕把优先级写混。复杂表达式尽量加括号，先保证对，再追求短。
+
 位图只需要三个操作，全部用位运算实现。
 
 ### get — 判断某个 bit 是否为 1
 
 思路：把目标 bit 位**移到最低位**，和 1 做与运算：
 
+**第一步：最简单的例子（用你能想到的最日常的比喻）**
+
 ```cpp
-(words[wordIndex] >> bitOffset) & 1
+unsigned long slots = 0b1000;         // 想象4个小灯，当前第3盏灯亮
+int pos = 3;                          // 准备检查第3盏灯
+int isOn = (slots >> pos) & 1;        // 先把目标位移到最低位，再和1比较
+```
+
+> 上面是“看某盏灯亮不亮”的最小版，下面一行就是这个判断在位图里的标准写法。
+
+**第三步：给原始代码加注释**
+
+```cpp
+(words[wordIndex] >> bitOffset) & 1  // ⚠️ 先右移对齐目标位，再与1取最低位
 ```
 
 等价写法（代码里用的）：
 
+**第一步：最简单的例子（用你能想到的最日常的比喻）**
+
 ```cpp
-(words[wordIndex] & (1ULL << bitOffset)) != 0
+unsigned long slots = 0b1000;             // 还是这排小灯
+int pos = 3;                              // 还是检查第3盏灯
+bool isOn = (slots & (1ULL << pos)) != 0; // ⚠️ 用掩码只保留目标位，再判断是否非0
+```
+
+> 上面和前一个例子本质一样，都是“只看目标位”，下面这行是工程里更常见也更直观的写法。
+
+**第三步：给原始代码加注释**
+
+```cpp
+(words[wordIndex] & (1ULL << bitOffset)) != 0  // ⚠️ 1ULL左移做掩码，只检测目标bit是否为1
 ```
 
 图示（判断 bitOffset=3 是否为1）：
@@ -135,8 +205,20 @@ words[i]:     1 0 1 1 0 1 0 0
 
 思路：用**按位或**操作，只把目标位变成1，其他位不变：
 
+**第一步：最简单的例子（用你能想到的最日常的比喻）**
+
 ```cpp
-words[wordIndex] |= (1ULL << bitOffset);
+unsigned long lights = 0;             // 一排灯一开始全灭
+int pos = 2;                          // 现在要打开第2盏灯
+lights |= (1ULL << pos);              // ⚠️ 用或运算把第2位强制置为1
+```
+
+> 上面是“打开一盏指定位置的灯”，下面代码是同样的动作，只是目标存储换成了 words[wordIndex]。
+
+**第三步：给原始代码加注释**
+
+```cpp
+words[wordIndex] |= (1ULL << bitOffset);  // ⚠️ 目标位变1，其它位保持原样
 ```
 
 图示（把 bitOffset=2 设置为1）：
@@ -154,8 +236,20 @@ words[i]:     1 0 1 1 0 0 0 0
 
 思路：先取反得到一个"只有目标位是0其他位是1"的掩码，再用**按位与**：
 
+**第一步：最简单的例子（用你能想到的最日常的比喻）**
+
 ```cpp
-words[wordIndex] &= ~(1ULL << bitOffset);
+unsigned long lights = 0b1111;            // 四盏灯现在都亮着
+int pos = 2;                              // 现在要关掉第2盏灯
+lights &= ~(1ULL << pos);                 // ⚠️ 掩码取反后与运算，只把第2位清零
+```
+
+> 上面是“关掉某一盏灯”，下面代码是相同逻辑在位图里的正式写法。
+
+**第三步：给原始代码加注释**
+
+```cpp
+words[wordIndex] &= ~(1ULL << bitOffset);  // ⚠️ 目标位清0，其它位不受影响
 ```
 
 图示（把 bitOffset=2 设置为0）：
@@ -172,74 +266,91 @@ words[i]:         1 0 1 1 0 1 0 0
 
 ## 5. 完整代码实现
 
+**第一步：最简单的例子（用你能想到的最日常的比喻）**
+
 ```cpp
-#include <iostream>
-#include <vector>
-#include <stdexcept>
-using namespace std;
+unsigned long lights = 0;                  // 一排64盏灯先全灭
+lights |= (1ULL << 5);                     // 打开5号灯，表示“5号物品存在”
+bool has5 = (lights & (1ULL << 5)) != 0;   // 检查5号灯是否亮着
+lights &= ~(1ULL << 5);                    // 再把5号灯关掉
+```
+
+> 上面的 4 行就是位图的核心动作：置位、查询、清位。下面完整类代码只是把这些动作封装成可复用的方法。
+
+**第三步：给原始代码加注释**
+
+```cpp
+#include <iostream>    // 用于输出测试结果
+#include <vector>      // ⚠️ 动态数组容器，作为位图底层存储
+#include <stdexcept>   // 用于抛出越界异常
+using namespace std;   // 简化标准库命名空间书写
 
 class MyBitSet {
 private:
-    vector<unsigned long> words;  // 底层存储
-    int size;                      // 能存储的最大元素值+1
+    vector<unsigned long> words;   // ⚠️ 每个 unsigned long 保存64个bit
+    int size;                      // 可表示的范围是 [0, size)
 
 public:
-    MyBitSet(int size) : size(size) {
+    MyBitSet(int size) : size(size) {       // ⚠️ 初始化列表：先初始化成员变量
         // 计算需要多少个 unsigned long
         // 比如 size=1000，需要 1000/64+1=16 个
-        int arraySize = size / 64 + 1;
-        words.resize(arraySize, 0);  // 全部初始化为0
+        int arraySize = size / 64 + 1;      // 计算底层数组长度
+        words.resize(arraySize, 0);          // 把每个word初始化为0（全是未设置状态）
     }
 
     // 判断第 bitIndex 个 bit 是否为 1
     bool get(int bitIndex) {
-        if (bitIndex < 0 || bitIndex >= size)
-            throw out_of_range("Index out of range");
-        int wordIndex = bitIndex / 64;
-        int bitOffset = bitIndex % 64;
-        return (words[wordIndex] & (1ULL << bitOffset)) != 0;
+        if (bitIndex < 0 || bitIndex >= size)            // 先做边界检查
+            throw out_of_range("Index out of range");   // ⚠️ 越界就抛异常，避免非法访问
+        int wordIndex = bitIndex / 64;                   // 定位到第几个word
+        int bitOffset = bitIndex % 64;                   // 定位到word中的哪一位
+        return (words[wordIndex] & (1ULL << bitOffset)) != 0; // ⚠️ 掩码检测目标位
     }
 
     // 将第 bitIndex 个 bit 设置为 1
     void set(int bitIndex) {
-        if (bitIndex < 0 || bitIndex >= size)
-            throw out_of_range("Index out of range");
-        int wordIndex = bitIndex / 64;
-        int bitOffset = bitIndex % 64;
-        words[wordIndex] |= (1ULL << bitOffset);
+        if (bitIndex < 0 || bitIndex >= size)            // 边界检查
+            throw out_of_range("Index out of range");   // 越界直接报错
+        int wordIndex = bitIndex / 64;                   // 找到目标word
+        int bitOffset = bitIndex % 64;                   // 找到word内偏移
+        words[wordIndex] |= (1ULL << bitOffset);         // ⚠️ 置位：目标bit设为1
     }
 
     // 将第 bitIndex 个 bit 设置为 0
     void clear(int bitIndex) {
-        if (bitIndex < 0 || bitIndex >= size)
-            throw out_of_range("Index out of range");
-        int wordIndex = bitIndex / 64;
-        int bitOffset = bitIndex % 64;
-        words[wordIndex] &= ~(1ULL << bitOffset);
+        if (bitIndex < 0 || bitIndex >= size)            // 边界检查
+            throw out_of_range("Index out of range");   // 越界直接报错
+        int wordIndex = bitIndex / 64;                   // 找到目标word
+        int bitOffset = bitIndex % 64;                   // 找到word内偏移
+        words[wordIndex] &= ~(1ULL << bitOffset);        // ⚠️ 清位：目标bit设为0
     }
 };
 
 int main() {
-    MyBitSet bitSet(1000);
+    MyBitSet bitSet(1000);  // 创建一个可管理0~999的位图
 
-    bitSet.set(10);
-    bitSet.set(100);
-    bitSet.set(500);
+    bitSet.set(10);   // 标记10存在
+    bitSet.set(100);  // 标记100存在
+    bitSet.set(500);  // 标记500存在
 
-    cout << bitSet.get(10)  << endl;   // 1（true）
-    cout << bitSet.get(100) << endl;   // 1（true）
-    cout << bitSet.get(200) << endl;   // 0（false）
+    cout << bitSet.get(10)  << endl;   // 读取10号标记，输出1（true）
+    cout << bitSet.get(100) << endl;   // 读取100号标记，输出1（true）
+    cout << bitSet.get(200) << endl;   // 读取200号标记，未设置所以输出0（false）
 
-    bitSet.clear(100);
-    cout << bitSet.get(100) << endl;   // 0（false）
+    bitSet.clear(100);                 // 清除100号标记
+    cout << bitSet.get(100) << endl;   // 再查100，输出0（false）
 
-    return 0;
+    return 0;  // 程序正常结束
 }
 ```
 
 ---
 
 ## 6. 位运算优化
+
+这一节本质是在做“等价替换”：数学含义不变，只是换成 CPU 更喜欢的写法。
+`/64` 和 `%64` 的优化成立，是因为 64 是 $2$ 的幂；如果不是 $2^k$，这套替换就不能直接用。
+你不用把它当死规则，先问“除数是不是 $2^k$”，再决定能不能位运算化。
 
 代码中的 `/64` 和 `%64` 可以用位运算替代，速度更快：
 
@@ -248,21 +359,39 @@ int main() {
 | `bitIndex / 64` | `bitIndex >> 6` | 64 = 2^6，除以64等于右移6位           |
 | `bitIndex % 64` | `bitIndex & 63` | 除数是2的幂时，取模等于按位与(除数-1) |
 
+**第一步：最简单的例子（用你能想到的最日常的比喻）**
+
+```cpp
+int totalCandy = 130;                 // 一共有130颗糖
+int fullBox = totalCandy >> 6;        // ⚠️ 每盒64颗，用右移6位算装满了几盒
+int leftCandy = totalCandy & 63;      // ⚠️ 用按位与63，算最后一盒还剩几颗
+```
+
+> 上面是在做“整盒 + 零头”的拆分，下面代码和它完全对应，只是变量名换成了位图索引。
+
+**第三步：给原始代码加注释**
+
 ```cpp
 // 优化前
-int wordIndex = bitIndex / 64;
-int bitOffset = bitIndex % 64;
+int wordIndex = bitIndex / 64;  // 常规除法：算第几个word
+int bitOffset = bitIndex % 64;  // 常规取模：算word内偏移
 
 // 优化后
-int wordIndex = bitIndex >> 6;
-int bitOffset = bitIndex & 63;
+int wordIndex = bitIndex >> 6;  // ⚠️ 右移6位，等价于除以64
+int bitOffset = bitIndex & 63;  // ⚠️ 与63按位与，等价于对64取模
 ```
 
 这两种写法结果完全相同，位运算版本更快。
 
+> ✅ 你现在已经不只是会写，还会判断“为什么能优化”。这就是进步。
+
 ---
 
 ## 7. 总结
+
+这一章结束后，你要带走的不是某几行代码，而是一个判断标准：当布尔状态特别多时，位图可以显著省空间。
+你以后碰到“存在性判断 + 值域固定 + 数据量很大”的题，优先想到位图，思路就会更快打开。
+先把适用场景想清楚，再去写实现，效率会更高。
 
 ```
 位图的本质：用每个 bit 位存一个布尔值，节省 7/8 的内存
@@ -317,8 +446,20 @@ int bitOffset = bitIndex & 63;
 >
 > # get — 判断某位是否为1
 >
+> **第一步：最简单的例子（用你能想到的最日常的比喻）**
+>
 > ```cpp
-> (words[wordIndex] & (1ULL << bitOffset)) != 0
+> unsigned long lights = 0b1000;               // 一排小灯里第3盏亮着
+> int pos = 3;                                  // 准备检查第3盏灯
+> bool on = (lights & (1ULL << pos)) != 0;      // ⚠️ 掩码检测：非0就是亮
+> ```
+>
+> 上面是“看某盏灯亮不亮”的最小写法，下面这一行就是同一个动作在位图变量上的表达。
+>
+> **第三步：给原始代码加注释**
+>
+> ```cpp
+> (words[wordIndex] & (1ULL << bitOffset)) != 0  // ⚠️ 只检测目标位是否为1
 > ```
 >
 > **场景：** 想知道第3位是不是1。
@@ -347,8 +488,20 @@ int bitOffset = bitIndex & 63;
 >
 > # set — 把某位设置为1
 >
+> **第一步：最简单的例子（用你能想到的最日常的比喻）**
+>
 > ```cpp
-> words[wordIndex] |= (1ULL << bitOffset);
+> unsigned long lights = 0;                // 一排灯先全灭
+> int pos = 2;                             // 现在要打开第2盏灯
+> lights |= (1ULL << pos);                 // ⚠️ 用或运算把第2位设为1
+> ```
+>
+> 上面是“打开一盏指定位置的灯”，下面代码把同样动作应用到位图的目标 word 上。
+>
+> **第三步：给原始代码加注释**
+>
+> ```cpp
+> words[wordIndex] |= (1ULL << bitOffset);  // ⚠️ 置位：目标bit变1，其它位不变
 > ```
 >
 > **场景：** 想把第2位设置为1，其他位不变。
@@ -371,8 +524,20 @@ int bitOffset = bitIndex & 63;
 >
 > # clear — 把某位设置为0
 >
+> **第一步：最简单的例子（用你能想到的最日常的比喻）**
+>
 > ```cpp
-> words[wordIndex] &= ~(1ULL << bitOffset);
+> unsigned long lights = 0b1111;            // 四盏灯当前都亮
+> int pos = 2;                               // 现在要关第2盏灯
+> lights &= ~(1ULL << pos);                  // ⚠️ 先取反再与，只清目标位
+> ```
+>
+> 上面是“关掉指定灯位”的最小版，下面这行是同样思路在位图中的直接写法。
+>
+> **第三步：给原始代码加注释**
+>
+> ```cpp
+> words[wordIndex] &= ~(1ULL << bitOffset);  // ⚠️ 清位：目标bit变0，其它位不变
 > ```
 >
 > 这里多了一个 `~`，先解释 `~` 是什么。

@@ -16,8 +16,14 @@
 ## 1. 核心思路
 
 栈和队列的所有操作都是 O(1)，而双链表的**头尾增删**也都是 O(1)，天然匹配。
+你可以理解为“需求和工具刚好对齐”。
+当需求只在两端操作时，双链表不会强迫你搬移中间元素。
+这就是它在这里特别顺手的原因。
 
 所以实现非常简单：**直接调用双链表的 API 就行了。**
+你写代码时，重点不在“重新造轮子”，而在“把规则映射正确”。
+栈要同一端进出，队列要两端分工。
+一旦映射对了，代码会很短，也很稳定。
 
 ```
 双链表的能力：
@@ -31,11 +37,18 @@
   一端插入、另一端删除：O(1)  → 用链表的尾部插入、头部删除即可
 ```
 
+> 💡 **老师提醒：** 刚开始实现时，先在纸上画“哪一端是入口、哪一端是出口”，再写 `push_back/pop_front` 这类语句，能少很多低级错误。
+
+> ✅ 你已经进入“用需求驱动实现”的思路了，很棒。
+
 ---
 
 ## 2. 用链表实现栈
 
 **设计：把链表尾部作为栈顶。**
+这样做的好处是，`push` 和 `pop` 都落在尾部，动作统一。
+统一意味着更不容易写错。
+而且双链表尾部操作就是 O(1)，效率也稳定。
 
 ```
 链表：head <-> [1] <-> [2] <-> [3] <-> tail
@@ -49,49 +62,60 @@ peek()： 看尾部的3，不删除
 
 ### 完整代码
 
-```cpp
-#include <iostream>
-#include <list>
-using namespace std;
+**第一步：最简单的例子（用你能想到的最日常的比喻）**
 
-template<typename E>
+```cpp
+vector<int> plates;                 // 准备一摞“盘子”
+plates.push_back(1);                // 放一个盘子到最上面
+int top = plates.back();            // 看最上面的盘子
+plates.pop_back();                  // 把最上面的盘子拿走
+```
+
+> 上面的例子只是在模拟“同一端进出”，下面的真实代码做的是同样的事，只是底层换成了 `list` 并封装成类。
+
+```cpp
+#include <iostream>   // 输出用
+#include <list>       // 双链表容器
+using namespace std;  // 简化标准库命名空间
+
+template<typename E>  // ⚠️ 模板类：E 是元素类型占位符
 class MyLinkedStack {
 private:
-    list<E> lst;   // 底层用双链表
+    list<E> lst;   // 底层用双链表，负责真正存数据
 
 public:
     // 向栈顶插入，O(1)
-    void push(const E &e) {
+    void push(const E &e) {         // ⚠️ const E&：按引用传参且不允许修改 e
         lst.push_back(e);   // 链表尾部 = 栈顶
     }
 
     // 从栈顶删除并返回，O(1)
     E pop() {
-        E value = lst.back();  // 先取出栈顶的值
-        lst.pop_back();        // 再删除
-        return value;
+        E value = lst.back();  // 先取出栈顶的值，避免删掉后拿不到
+        lst.pop_back();        // 再删除尾部元素
+        return value;          // 返回弹出的值
     }
 
     // 查看栈顶元素（不删除），O(1)
-    E peek() const {
-        return lst.back();
+    E peek() const {           // ⚠️ 函数后 const：保证不修改成员变量
+        return lst.back();     // 直接看尾部
     }
 
     // 返回元素个数，O(1)
-    int size() const {
+    int size() const {         // ⚠️ const 成员函数：只读查询
         return lst.size();
     }
 };
 
 int main() {
-    MyLinkedStack<int> stack;
-    stack.push(1);
+    MyLinkedStack<int> stack;  // 创建 int 栈对象
+    stack.push(1);             // 依次入栈
     stack.push(2);
     stack.push(3);
     stack.push(4);
 
-    while (stack.size() > 0) {
-        cout << stack.pop() << endl;
+    while (stack.size() > 0) { // 只要非空就持续出栈
+        cout << stack.pop() << endl; // 打印并删除栈顶
     }
     // 输出：4 3 2 1（后进先出）
 }
@@ -113,12 +137,26 @@ pop()：返回1，链表 = []
 
 ### 也可以用头部作为栈顶
 
-把尾部换成头部，效果完全一样，因为双链表头部操作也是 O(1)：
+把尾部换成头部，效果完全一样，因为双链表头部操作也是 O(1)。
+你会发现这体现了“栈只要求同一端操作”，并不强制必须是尾部。
+选择头还是尾，更多是代码风格问题。
+保持前后一致就行。
+
+**第一步：最简单的例子（用你能想到的最日常的比喻）**
 
 ```cpp
-void push(const E &e) { lst.push_front(e); }  // 改成头部插入
-E pop()               { E v = lst.front(); lst.pop_front(); return v; }
-E peek() const        { return lst.front(); }
+list<int> books;                     // 一列书，前面当“顶部”
+books.push_front(10);                // 从最前面放一本书
+int x = books.front();               // 看最前面是哪本
+books.pop_front();                   // 从最前面拿走一本
+```
+
+> 上面的逻辑和前一个栈完全一致，只是把“操作端”从尾部换到了头部，下面代码就是这个切换。
+
+```cpp
+void push(const E &e) { lst.push_front(e); }  // 改成头部插入（栈顶在头）
+E pop()               { E v = lst.front(); lst.pop_front(); return v; } // 从头取出并删除
+E peek() const        { return lst.front(); } // 查看头部元素
 ```
 
 ---
@@ -126,6 +164,9 @@ E peek() const        { return lst.front(); }
 ## 3. 用链表实现队列
 
 **设计：链表尾部作为队尾（插入），链表头部作为队头（删除）。**
+这个分工非常经典：后来的排在后面，先来的从前面走。
+它和生活中的排队模型完全一致。
+这样你在脑子里能一直保持 FIFO，不容易写成栈。
 
 ```
 链表：head <-> [1] <-> [2] <-> [3] <-> tail
@@ -139,31 +180,42 @@ peek()： 看头部的2，不删除
 
 ### 完整代码
 
-```cpp
-#include <iostream>
-#include <list>
-using namespace std;
+**第一步：最简单的例子（用你能想到的最日常的比喻）**
 
-template<typename E>
+```cpp
+deque<int> line;                    // 一支“排队队伍”
+line.push_back(1);                  // 新人从队尾进入
+int first = line.front();           // 看队头是谁
+line.pop_front();                   // 队头离开队伍
+```
+
+> 上面是最小化的 FIFO 动作，下面真实代码是同一动作的封装版：把队列规则写成类方法。
+
+```cpp
+#include <iostream>   // 控制台输出
+#include <list>       // 双链表
+using namespace std;  // 使用标准命名空间
+
+template<typename E>  // ⚠️ 模板：让队列支持任意类型
 class MyLinkedQueue {
 private:
     list<E> lst;   // 底层用双链表
 
 public:
     // 向队尾插入，O(1)
-    void push(const E &e) {
+    void push(const E &e) {         // ⚠️ const E&：避免拷贝且防止误改
         lst.push_back(e);   // 链表尾部 = 队尾
     }
 
     // 从队头删除并返回，O(1)
     E pop() {
-        E front = lst.front();  // 先取出队头的值
-        lst.pop_front();        // 再删除
-        return front;
+        E front = lst.front();  // 先取队头值
+        lst.pop_front();        // 再删除队头
+        return front;           // 返回出队元素
     }
 
     // 查看队头元素（不删除），O(1)
-    E peek() const {
+    E peek() const {            // ⚠️ const 成员函数：只读查看
         return lst.front();
     }
 
@@ -174,8 +226,8 @@ public:
 };
 
 int main() {
-    MyLinkedQueue<int> queue;
-    queue.push(1);
+    MyLinkedQueue<int> queue;   // 创建 int 队列
+    queue.push(1);              // 入队
     queue.push(2);
     queue.push(3);
 
@@ -199,6 +251,10 @@ pop()： 删队头，返回2，链表 = [3]
 peek()：看队头，返回3，链表不变 = [3]
 ```
 
+> 💡 **老师提醒：** 队列最容易写反的地方是 `pop`。你写完后先口头读一遍：“我是从头删吗？”这一步能救你很多次。
+
+> ✅ 你已经能用同一种底层结构实现两种行为，这就是抽象能力在进步。
+
 ---
 
 ## 4. 对比总结
@@ -217,15 +273,28 @@ peek()：看队头，返回3，链表不变 = [3]
 队列：push 在尾部，pop 在头部
 ```
 
+*就像“叠盘子”和“窗口排队”的区别：一个只摸一端，一个两端分工。*
+
 两种实现用到的链表 API：
 
+**第一步：最简单的例子（用你能想到的最日常的比喻）**
+
 ```cpp
-lst.push_back()   // 尾部插入
-lst.push_front()  // 头部插入
-lst.pop_back()    // 尾部删除
-lst.pop_front()   // 头部删除
-lst.back()        // 查看尾部
-lst.front()       // 查看头部
+list<int> tool;                    // 准备一个双链表容器
+tool.push_back(1);                 // 尾部放入
+int a = tool.front();              // 看头部
+tool.pop_front();                  // 头部取出
+```
+
+> 这个最小例子先把“头尾操作”串起来，下面原代码就是完整 API 清单，方便你查表记忆。
+
+```cpp
+lst.push_back()   // 尾部插入（常用于队尾入队/栈顶入栈）
+lst.push_front()  // 头部插入（双端结构常用）
+lst.pop_back()    // 尾部删除（栈常用）
+lst.pop_front()   // 头部删除（队列常用）
+lst.back()        // 查看尾部元素
+lst.front()       // 查看头部元素
 lst.size()        // 元素个数
 ```
 

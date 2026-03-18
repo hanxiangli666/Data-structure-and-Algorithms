@@ -110,21 +110,43 @@
 
 ### 3.1 整体结构
 
+**第一步：最简单的例子**
+
+布隆过滤器的核心思路：用一个很小的「打勾表」代替完整的「学生名册」。每个学生有几个「特征位置」，注册时在这些位置打勾；查询时看这些位置是否都打了勾：
+
+```cpp
+vector<int> bloomTable(100, 0);          // 一个小小的打勾表（100 位）
+
+void registerStudent(string name) {
+    int pos1 = hashFunction1(name) % 100;  // 计算第一个特征位置
+    int pos2 = hashFunction2(name) % 100;  // 计算第二个特征位置
+    bloomTable[pos1] = 1;                  // 在这两个位置打勾
+    bloomTable[pos2] = 1;
+}
+
+bool isStudent(string name) {
+    int pos1 = hashFunction1(name) % 100;
+    int pos2 = hashFunction2(name) % 100;
+    return bloomTable[pos1] && bloomTable[pos2];  // 都打勾就可能是学生
+}
+```
+
+> 下面的代码抽象成一个通用的类，核心思路完全相同。
+
 ```cpp
 template<typename T>
 class SimpleBloomFilter {
 private:
     int bitSetSize;          // 位图的大小（有多少个 bit）
-    MyBitSet* bitSet;        // 位图对象（前置知识中学过的）
+    MyBitSet* bitSet;        // 位图对象（一个高效的 0/1 数组）
     int k;                   // 哈希函数的个数
 
     // 模拟第 seed 个哈希函数
     int hash(const T& element, int seed) {
-        hash<T> hasher;                    // C++ 标准库的哈希函数
-        size_t h = hasher(element);        // 计算基础哈希值
+        hash<T> hasher;                                    // ⚠️ C++ 标准库的哈希函数
+        size_t h = hasher(element);                        // 计算基础哈希值
         return abs(static_cast<int>(h) + seed) % bitSetSize;
-        //     |                    |         |
-        //     取绝对值        加上种子偏移   对位图大小取模，确保索引在范围内
+        //     取绝对值 - 加上种子（产生不同的哈希值）- 对位图大小取模
     }
 
 public:
@@ -132,17 +154,7 @@ public:
 };
 ```
 
-**为什么要多个哈希函数？**
-
-如果只用 1 个哈希函数，只在位图上标记 1 个位置，那不同元素撞到同一个位置的概率很高（哈希冲突）。用 k 个哈希函数标记 k 个位置，要求 k 个位置**全部**命中才算"可能存在"，大大降低了误判率。
-
-**类比**：如果门卫只看一个特征（比如身高），很容易搞错。但如果同时看 3 个特征（身高 + 体重 + 鞋码），全部吻合才放行，误判概率就小多了。
-
-**C++ 知识点**：
-- `const T& element`：`const` 引用传参，避免拷贝，且保证不修改原对象
-- `hash<T>`：C++ 标准库提供的通用哈希函数模板，对 `string`、`int` 等类型都有特化
-- `static_cast<int>(h)`：类型转换，把 `size_t`（无符号）转成 `int`（有符号）
-- `abs(...)`：取绝对值，因为加上 seed 后可能溢出变负数
+> 💡 **老师提醒：** 为什么要多个哈希函数？因为用 1 个位置太容易重合（误判高），用 k 个位置的概率就小得多。
 
 ### 3.2 构造函数和析构函数
 
@@ -163,49 +175,113 @@ SimpleBloomFilter(int bitSetSize, int hashFunctionNum)
 
 ### 3.3 添加元素
 
+**第一步：最简单的例子**
+
+注册一个学生：在他的 k 个特征位置上都打勾：
+
 ```cpp
-void add(const T& element) {
+void registerStudent(string name) {
+    // 对这个学生，计算 k 个特征位置
     for (int i = 0; i < k; i++) {
-        int hashValue = hash(element, i);   // 用第 i 个哈希函数算索引
-        bitSet->set(hashValue);             // 把位图的第 hashValue 位设为 1
+        int pos = hashFunction(name, i);    // 第 i 个哈希函数的结果
+        bloomTable[pos] = 1;                // 在这个位置打勾
     }
 }
 ```
 
-**过程**：对同一个元素，用 k 个不同的种子（0, 1, 2, ..., k-1）算出 k 个不同的哈希值，全部在位图上标记为 1。
+> 下面的代码完全相同，使用位图对象的 set 方法来打勾。
+
+```cpp
+void add(const T& element) {
+    for (int i = 0; i < k; i++) {
+        int hashValue = hash(element, i);   // 用第 i 个哈希函数算位置
+        bitSet->set(hashValue);             // 把位图的第 hashValue 位设为 1（打勾）
+    }
+}
+```
+
+**过程详解**：对同一个元素，用 k 个不同的种子（0, 1, 2, ..., k-1）产生 k 个不同的哈希值，全部在位图上标记为 1。
+
+> ✅ 时间复杂度 O(k)，其中 k 通常很小（3-7）。
 
 ### 3.4 查询元素
+
+**第一步：最简单的例子**
+
+判断某人是不是学生：检查他的 k 个特征位置是否都打了勾。只要有一个位置没打勾，就一定不是学生：
+
+```cpp
+bool isStudent(string name) {
+    for (int i = 0; i < k; i++) {
+        int pos = hashFunction(name, i);
+        if (bloomTable[pos] == 0) {        // 有一个位置没打勾
+            return false;                  // 一定不是学生
+        }
+    }
+    return true;                           // k 个位都打勾，可能是学生（但可能误判）
+}
+```
+
+> 下面的代码完全相同。
 
 ```cpp
 bool contains(const T& element) {
     for (int i = 0; i < k; i++) {
         int hashValue = hash(element, i);
         if (!bitSet->get(hashValue)) {
-            return false;   // 只要有一个位是 0，就一定不存在
+            return false;   // ⚠️ 只要有一个位是 0，就一定不存在（绝对准确）
         }
     }
-    return true;   // k 个位全是 1，可能存在（注意：可能是假阳性）
+    return true;            // k 个位全是 1，可能存在（注意：可能是假阳性）
 }
 ```
 
-**注意**：这里 `return true` 的含义是「可能存在」，不是「一定存在」。
+> 💡 **老师提醒：** 这是布隆过滤器最关键的特性：
+> - 说「没有」 → 一定**真的没有**
+> - 说「有」 → 可能是**假的有**（假阳性）
+
+> ✅ 时间复杂度 O(k)，查询速度飞快！
 
 ### 3.5 使用示例
+
+**第一步：最简单的例子**
+
+创建一个小型学生验证系统，注册 3 个学生，然后验证几个人的身份：
+
+```cpp
+// 位图 1000 位，3 个哈希函数
+SimpleBloomFilter<string> bf(1000, 3);
+
+// 注册学生
+bf.add("Alice");
+bf.add("Bob");
+bf.add("Charlie");
+
+// 验证
+cout << bf.contains("Alice") << endl;    // 1（true）- 确实注册了
+cout << bf.contains("Diana") << endl;    // 0（false）- 一定没注册
+```
+
+> 下面是完整的创建和验证过程。
 
 ```cpp
 int main() {
     // 位图大小 100万位，3 个哈希函数
     SimpleBloomFilter<string> bf(1000000, 3);
 
-    bf.add("apple");
+    bf.add("apple");                              // 注册 3 个元素
     bf.add("banana");
     bf.add("orange");
 
-    bf.contains("apple");    // true  → 确实存在
-    bf.contains("banana");   // true  → 确实存在
-    bf.contains("grape");    // false → 一定不存在（说「没有」就是真没有）
+    cout << bf.contains("apple") << endl;         // 1 → 确实存在
+    cout << bf.contains("banana") << endl;        // 1 → 确实存在
+    cout << bf.contains("grape") << endl;         // 0 → 一定不存在
+                                                   // （说「没有」就是真没有！）
+    return 0;
 }
 ```
+
+> ✅ 核心特点：极少的内存（100万位 ≈ 125 KB），极快的查询（O(k) ≈ O(1)）。
 
 ---
 

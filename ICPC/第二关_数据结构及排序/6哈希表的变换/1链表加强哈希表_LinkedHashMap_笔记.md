@@ -97,33 +97,56 @@
 
 ### 4.1 双链表节点定义
 
+**第一步：最简单的例子**
+
+想象你要把一群学生连成一队。每个学生需要知道自己前面是谁、后面是谁，这就是双链表节点的作用：
+
+```cpp
+struct Student {
+    string name;        // 学生名字
+    int score;          // 学生成绩
+    Student* prev;      // 指向前一个学生
+    Student* next;      // 指向后一个学生
+    Student(string n, int s) : name(n), score(s), prev(nullptr), next(nullptr) {}
+};
+```
+
+> 下面的代码完全相同，只是把「学生」换成了通用的「数据对」(key, value)。
+
 ```cpp
 template <typename K, typename V>
 struct Node {
-    K key;
-    V val;
-    Node* next;   // 指向链表中的下一个节点
-    Node* prev;   // 指向链表中的上一个节点
-
+    K key;                              // ⚠️ 存 key
+    V val;                              // ⚠️ 存 value
+    Node* next;                         // ⚠️ 指向链表中的下一个节点
+    Node* prev;                         // ⚠️ 指向链表中的上一个节点（这就是"双"的含义）
     Node(K key, V val) : key(key), val(val), next(nullptr), prev(nullptr) {}
 };
 ```
 
-**C++ 知识点**：
-
-- `template <typename K, typename V>`：模板，让这个结构体支持任意类型的 key 和 value（类似 Python 的泛型）
-- `: key(key), val(val), ...`：初始化列表，C++ 构造函数中初始化成员变量的标准写法
-- `nullptr`：C++ 中的空指针（相当于 Python 的 `None`）
+> ✅ 双链表最大的好处就是：有了 prev，删除任意节点都能 O(1) 完成。
 
 ### 4.2 哈希链表类整体结构
+
+**第一步：最简单的例子**
+
+一个哈希链表需要两个部分：一个哈希表（快速查找）和一个双链表（保持顺序）。就像学校登记系统：有一个索引簿（哈希表）快速查学生，也有一个签到册（链表）记录学生的到达顺序：
+
+```cpp
+unordered_map<string, Student*> studentIndex;  // 快速查找
+Student* firstStudent = nullptr;               // 链表头
+Student* lastStudent = nullptr;                // 链表尾
+```
+
+> 下面的代码就是这个思路，使用哈希表映射 key → 节点指针，用 head/tail 哨兵维护链表。
 
 ```cpp
 template <typename K, typename V>
 class MyLinkedHashMap {
 private:
-    Node<K, V>* head;    // 哨兵头节点（不存数据，只做标记）
-    Node<K, V>* tail;    // 哨兵尾节点（不存数据，只做标记）
-    unordered_map<K, Node<K, V>*> map;  // 哈希表：key → 链表节点指针
+    Node<K, V>* head;                           // ⚠️ 头哨兵（不存数据，只做边界标记）
+    Node<K, V>* tail;                           // ⚠️ 尾哨兵（不存数据，只做边界标记）
+    unordered_map<K, Node<K, V>*> map;          // ⚠️ key → 节点指针的映射
 
     // ... 私有方法（链表操作）
 public:
@@ -131,20 +154,42 @@ public:
 };
 ```
 
-**什么是哨兵节点？**
-
-**类比**：就像书的封面和封底。封面和封底本身不是书的内容，但有了它们，你就不用特殊处理「第一页」和「最后一页」的情况了。
-
-哨兵节点 `head` 和 `tail` 不存实际数据，但让代码更简洁——不需要处理「链表为空」「插入第一个元素」等边界情况。
+> 💡 **老师提醒：** head 和 tail 是哨兵节点，就像书的封面和封底——不是内容，但让遍历逻辑简洁。
 
 ### 4.3 构造函数和析构函数
 
+**第一步：最简单的例子**
+
+初始化一个「签到册」：先建立一个封面（头哨兵）和封底（尾哨兵），让它们互相连接。销毁时逐页撕掉所有页面：
+
+```cpp
+void initSignInBook() {
+    head = new Page();     // 创建封面
+    tail = new Page();     // 创建封底
+    head->next = tail;     // 封面 → 封底
+    tail->prev = head;     // 封底 ← 封面
+}
+
+void destroySignInBook() {
+    Page* current = head->next;
+    while (current != tail) {
+        Page* next = current->next;
+        delete current;    // 撕掉这页  
+        current = next;
+    }
+    delete head;
+    delete tail;
+}
+```
+
+> 下面的代码完全相同，只是改用面向对象的构造函数和析构函数写法。
+
 ```cpp
 MyLinkedHashMap() {
-    head = new Node<K, V>(K(), V());   // 创建哨兵头节点
-    tail = new Node<K, V>(K(), V());   // 创建哨兵尾节点
+    head = new Node<K, V>(K(), V());   // 创建头哨兵节点
+    tail = new Node<K, V>(K(), V());   // 创建尾哨兵节点
     head->next = tail;                  // head 和 tail 互相连接
-    tail->prev = head;                  // 初始时链表为空，只有哨兵
+    tail->prev = head;                  // 初始状态：head ↔ tail（中间没有数据）
 }
 ```
 
@@ -153,37 +198,49 @@ MyLinkedHashMap() {
 ```cpp
 ~MyLinkedHashMap() {
     // 遍历并释放所有数据节点
-    Node<K, V>* current = head->next;
-    while (current != tail) {
-        Node<K, V>* next = current->next;
-        delete current;       // 释放内存
-        current = next;
+    Node<K, V>* current = head->next;      // ⚠️ 从 head 下一个开始（跳过头哨兵）
+    while (current != tail) {              // 循环到 tail（跳过尾哨兵）
+        Node<K, V>* next = current->next;  // 先保存下一个节点
+        delete current;                     // 释放当前节点的内存
+        current = next;                     // 移动到下一个
     }
     delete head;
     delete tail;
 }
 ```
 
-**C++ 知识点**：
-
-- `new` 和 `delete`：C++ 的手动内存管理。Python 有垃圾回收机制不用管，但 C++ 中 `new` 出来的东西必须 `delete`，否则内存泄漏
-- `~MyLinkedHashMap()`：析构函数，对象被销毁时自动调用，负责清理资源
-- `K()` 和 `V()`：调用类型的默认构造函数，比如 `int()` 得到 `0`，`string()` 得到 `""`
+> 💡 **老师提醒：** 一定要先保存 `next`，再 `delete`，否则 delete 后访问 `current->next` 会出错（访问已释放的内存）。
 
 ### 4.4 核心私有方法：链表操作
 
 #### 尾部插入
 
+**第一步：最简单的例子**
+
+在队伍末尾加一个新人。需要连接三条关系：新人的前驱指向队尾前的那个人，新人的后驱指向队尾，队尾前的人指向新人，队尾指向新人：
+
+```cpp
+void addStudentAtEnd(Student* newStudent) {
+    Student* lastStudent = tail->prev;  // 队尾前的那个学生
+    newStudent->next = tail;            // 新人 → 队尾
+    newStudent->prev = lastStudent;     // 新人 ← 队尾前
+    lastStudent->next = newStudent;     // 队尾前 → 新人
+    tail->prev = newStudent;            // 队尾 ← 新人
+}
+```
+
+> 下面的代码逻辑完全相同。
+
 ```cpp
 void addLastNode(Node<K, V>* x) {
     Node<K, V>* temp = tail->prev;  // temp 是当前最后一个数据节点
-    // 原来: temp ↔ tail
-    // 目标: temp ↔ x ↔ tail
+    // 原状态: temp ↔ tail
+    // 目标状态: temp ↔ x ↔ tail
   
-    x->next = tail;
-    x->prev = temp;
-    temp->next = x;
-    tail->prev = x;
+    x->next = tail;                 // x 的后驱指向 tail
+    x->prev = temp;                 // x 的前驱指向 temp
+    temp->next = x;                 // temp 的后驱指向 x
+    tail->prev = x;                 // tail 的前驱指向 x（更新队尾）
 }
 ```
 
@@ -194,18 +251,37 @@ void addLastNode(Node<K, V>* x) {
 插入后:  ... ↔ temp ↔ x ↔ tail
 ```
 
+> ✅ 四行指针操作，O(1) 完成插入。
+
 #### 删除任意节点
+
+**第一步：最简单的例子**
+
+从队伍中间踢出一个学生。只需要让他前一个和后一个学生直接相连，绕过被删的这个人：
+
+```cpp
+void removeStudentFromQueue(Student* toDelete) {
+    Student* prevStudent = toDelete->prev;      // 前一个学生
+    Student* nextStudent = toDelete->next;      // 后一个学生
+    
+    prevStudent->next = nextStudent;            // 前 → 后（跳过 toDelete）
+    nextStudent->prev = prevStudent;            // 后 ← 前（跳过 toDelete）
+    toDelete->next = toDelete->prev = nullptr;  // 清空 toDelete 的指针（安全）
+}
+```
+
+> 下面的代码完全相同。
 
 ```cpp
 void removeNode(Node<K, V>* x) {
-    Node<K, V>* prev = x->prev;
-    Node<K, V>* next = x->next;
-    // 原来: prev ↔ x ↔ next
-    // 目标: prev ↔ next（x 被跳过）
+    Node<K, V>* prev = x->prev;     // x 前面的节点
+    Node<K, V>* next = x->next;     // x 后面的节点
+    // 原状态: prev ↔ x ↔ next
+    // 目标状态: prev ↔ next（x 被跳过）
   
-    prev->next = next;
-    next->prev = prev;
-    x->next = x->prev = nullptr;  // 断开 x 的指针（安全起见）
+    prev->next = next;              // prev 直接指向 next
+    next->prev = prev;              // next 直接指向 prev
+    x->next = x->prev = nullptr;    // ⚠️ 清空 x 的指针（防止野指针）
 }
 ```
 
@@ -213,10 +289,10 @@ void removeNode(Node<K, V>* x) {
 
 ```
 删除前:  ... ↔ prev ↔ x ↔ next ↔ ...
-删除后:  ... ↔ prev ↔ next ↔ ...   (x 被摘出来了)
+删除后:  ... ↔ prev ↔ next ↔ ...   (x 被跳开了)
 ```
 
-**这就是为什么删除是 O(1)**：我们已经拿到了节点 `x` 本身（通过哈希表直接找到），再加上双链表有 `prev` 指针，4 行指针操作就搞定了。
+> 💡 **老师提醒：** 这就是为什么删除是 O(1)——我们已经有了 x 的引用和它的 prev，所以不用遍历就能麻利地摘出 x。
 
 ### 4.5 核心公有方法
 
@@ -239,13 +315,32 @@ V get(K key) {
 
 #### put —— 插入/更新
 
+**第一步：最简单的例子**
+
+往「签到册」里加新学生（或改成绩）。新学生要在索引簿里注册，也要在签到册末页记录：
+
+```cpp
+void registerStudent(string name, int score) {
+    if (studentIndex.count(name)) {      // 学生已经注册过
+        studentIndex[name]->score = score;  // 直接改成绩
+        return;
+    }
+    // 新学生：先创建节点，加入末页，再加入索引簿
+    Student* node = new Student(name, score);
+    addStudentToEnd(node);               // 加到链表末尾
+    studentIndex[name] = node;           // 注册到索引
+}
+```
+
+> 下面的代码完全相同的思路。
+
 ```cpp
 void put(K key, V val) {
     if (map.find(key) == map.end()) {
         // key 不存在 → 新插入
-        Node<K, V>* node = new Node<K, V>(key, val);
-        addLastNode(node);   // 加入链表尾部
-        map[key] = node;     // 加入哈希表
+        Node<K, V>* node = new Node<K, V>(key, val);        // ⚠️ 动态创建节点
+        addLastNode(node);                                  // 加入链表尾部
+        map[key] = node;                                    // 加入哈希表
         return;
     }
     // key 已存在 → 只更新 value
@@ -253,38 +348,71 @@ void put(K key, V val) {
 }
 ```
 
+> ✅ 关键：新 key 永远加在链表的尾部，这样就自动维护了「按插入顺序」的特性。
+
 #### remove —— 删除
+
+**第一步：最简单的例子**
+
+删除一个学生：从索引簿里删掉，也从签到册里撕掉：
+
+```cpp
+void deleteStudent(string name) {
+    if (!studentIndex.count(name)) return;    // 没有这个学生
+    
+    Student* node = studentIndex[name];       // 先拿到节点
+    studentIndex.erase(name);                 // 从索引簿删掉
+    removeStudentFromQueue(node);             // 从签到册删掉
+    delete node;                              // 释放内存
+}
+```
+
+> 下面的代码完全相同。
 
 ```cpp
 void remove(K key) {
     if (map.find(key) == map.end()) {
         return;  // key 不存在，啥也不做
     }
-    Node<K, V>* node = map[key];
-    map.erase(key);      // 从哈希表中删除
-    removeNode(node);    // 从链表中删除
-    delete node;         // 释放内存
+    Node<K, V>* node = map[key];              // 通过哈希表快速找到节点
+    map.erase(key);                           // 从哈希表中删除
+    removeNode(node);                         // 从链表中删除（O(1)）
+    delete node;                              // 释放内存
 }
 ```
 
-**C++ 知识点**：
-
-- `map.erase(key)`：从 `unordered_map` 中删除键值对
+> ✅ 一共三行操作，每一行都是 O(1)，所以总复杂度也是 O(1)。
 
 #### keys —— 按插入顺序获取所有 key
+
+**第一步：最简单的例子**
+
+从签到册里，按顺序读出所有学生的名字。从第一个学生开始，一直往下看，直到最后一个：
+
+```cpp
+vector<string> getAllStudentNames() {
+    vector<string> names;
+    for (Student* p = head->next; p != tail; p = p->next) {
+        names.push_back(p->name);        // 按顺序收集所有名字
+    }
+    return names;
+}
+```
+
+> 下面的代码完全相同，只是改成了通用的「key」。
 
 ```cpp
 vector<K> keys() {
     vector<K> keyList;
-    // 从 head 的下一个开始（跳过哨兵），走到 tail 之前（跳过哨兵）
+    // 从 head 的下一个开始（跳过头哨兵），走到 tail 之前（跳过尾哨兵）
     for (Node<K, V>* p = head->next; p != tail; p = p->next) {
-        keyList.push_back(p->key);
+        keyList.push_back(p->key);      // ⚠️ 遍历链表，收集所有 key
     }
-    return keyList;
+    return keyList;                     // 返回的顺序就是插入顺序
 }
 ```
 
-这里遍历的就是双链表，所以得到的顺序就是插入顺序。
+> ✅ 这里遍历的就是双链表，保证了顺序不会乱。
 
 ---
 

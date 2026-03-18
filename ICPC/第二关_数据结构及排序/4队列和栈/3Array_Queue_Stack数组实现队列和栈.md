@@ -1,4 +1,4 @@
-# 用数组实现队列和栈
+﻿# 用数组实现队列和栈
 
 > 前置知识：队列/栈基本原理、环形数组技巧
 
@@ -15,7 +15,10 @@
 
 ## 1. 核心思路
 
-数组的头尾操作复杂度不一样：
+数组的头尾操作复杂度不一样。
+这个差异是实现策略的出发点，不是细节。
+你一旦忽略它，就会在队列实现里写出 O(N) 的隐藏开销。
+先看复杂度，再决定数据结构，顺序不能反。
 
 ```
 数组尾部插入/删除：O(1)   ← 直接操作，不需要搬移数据
@@ -31,11 +34,20 @@
           → 用环形数组（CycleArray），头尾操作都是 O(1)
 ```
 
+*就像在走廊末端进出很顺手，但如果每次都要从最前面插进去，整排人都得挪位置。*
+
+> 💡 **老师提醒：** 题目一旦要求大量“队头删除”，普通数组就别硬上，性能会在数据量大时明显掉下来。
+
+> ✅ 你已经开始用复杂度来指导设计，这就是竞赛思维。
+
 ---
 
 ## 2. 用数组实现栈
 
 **设计：把数组尾部作为栈顶。**
+因为数组尾部 `push_back/pop_back` 天然高效。
+并且“同一端进出”正好符合栈定义。
+实现出来代码短，错误点也少。
 
 ```
 数组：[1, 2, 3, 4]
@@ -49,31 +61,42 @@ peek()： 看尾部的4，不删除
 
 ### 完整代码
 
-```cpp
-#include <iostream>
-#include <vector>
-using namespace std;
+**第一步：最简单的例子（用你能想到的最日常的比喻）**
 
-template<typename E>
+```cpp
+vector<int> box;                    // 准备一个“盒子序列”
+box.push_back(3);                   // 往最后一个位置放数字
+int x = box.back();                 // 看最后放进去的数字
+box.pop_back();                     // 把最后放进去的取出来
+```
+
+> 上面这个小例子就是数组栈的核心动作，下面真实代码把它封装成模板类，支持不同元素类型。
+
+```cpp
+#include <iostream>   // 控制台输出
+#include <vector>     // 动态数组 vector
+using namespace std;  // 标准命名空间
+
+template<typename E>  // ⚠️ 模板类：E 代表元素类型
 class MyArrayStack {
 private:
     vector<E> arr;   // 底层用动态数组
 
 public:
     // 向栈顶插入，O(1)
-    void push(const E& e) {
+    void push(const E& e) {          // ⚠️ const E&：避免拷贝并防止误改参数
         arr.push_back(e);    // 数组尾部 = 栈顶
     }
 
     // 从栈顶删除并返回，O(1)
     E pop() {
-        E topElement = arr.back();  // 先取出栈顶的值
-        arr.pop_back();             // 再删除
-        return topElement;
+        E topElement = arr.back();  // 先读栈顶值
+        arr.pop_back();             // 再删除栈顶元素
+        return topElement;          // 返回出栈值
     }
 
     // 查看栈顶元素（不删除），O(1)
-    E peek() const {
+    E peek() const {                // ⚠️ const 成员函数：只读查看
         return arr.back();
     }
 
@@ -84,8 +107,8 @@ public:
 };
 
 int main() {
-    MyArrayStack<int> stack;
-    stack.push(1);
+    MyArrayStack<int> stack;         // 创建 int 栈
+    stack.push(1);                   // 入栈
     stack.push(2);
     stack.push(3);
 
@@ -111,12 +134,17 @@ pop()：  从头部删除，需要把所有元素往前移一位，O(N)
 ```
 
 **除非用环形数组（CycleArray），** 它的头部操作也是 O(1)，这样头部也可以作为栈顶。
+这个点你知道就够，入门阶段先把“尾部做栈顶”练熟。
+先把主路走通，再学可选路线。
 
 ---
 
 ## 3. 用数组实现队列
 
 队列需要**一端插入，另一端删除**，两端都要 O(1)。
+普通数组做不到稳定的 O(1) 队头删除。
+所以真正可行的数组方案是环形数组。
+它本质上是“逻辑上转圈，物理上不搬家”。
 
 普通数组做不到（头部操作是 O(N)），所以用**环形数组 CycleArray**：
 
@@ -131,12 +159,23 @@ pop()：  从头部删除，需要把所有元素往前移一位，O(N)
 
 ### 完整代码
 
+**第一步：最简单的例子（用你能想到的最日常的比喻）**
+
 ```cpp
-#include <iostream>
-using namespace std;
+int start = 0;                       // 队头指针，像窗口号
+int end = 0;                         // 队尾后一个位置
+end = (end + 1) % 8;                 // 入队：队尾往前走一格
+start = (start + 1) % 8;             // 出队：队头往前走一格
+```
+
+> 上面在演示“环形移动指针”的本质，下面真实代码把这个能力封装在 `CycleArray` 里，对外只暴露队列接口。
+
+```cpp
+#include <iostream>  // 输出
+using namespace std; // 标准命名空间
 // 需要引入之前实现的 CycleArray
 
-template<typename E>
+template<typename E> // ⚠️ 模板：队列元素类型由 E 决定
 class MyArrayQueue {
 private:
     CycleArray<E> arr;   // 底层用环形数组
@@ -144,28 +183,28 @@ private:
 public:
     // 向队尾插入，O(1)
     void push(E e) {
-        arr.addLast(e);
+        arr.addLast(e);   // 委托给环形数组尾部插入
     }
 
     // 从队头删除并返回，O(1)
     E pop() {
-        return arr.removeFirst();
+        return arr.removeFirst(); // 委托给环形数组头部删除
     }
 
     // 查看队头元素（不删除），O(1)
     E peek() {
-        return arr.getFirst();
+        return arr.getFirst();    // 读取队头
     }
 
     // 返回元素个数，O(1)
     int size() {
-        return arr.size();
+        return arr.size();        // 返回当前长度
     }
 };
 
 int main() {
-    MyArrayQueue<int> queue;
-    queue.push(1);
+    MyArrayQueue<int> queue;      // 创建 int 队列
+    queue.push(1);                // 入队
     queue.push(2);
     queue.push(3);
 
@@ -190,6 +229,12 @@ int main() {
   头部删除 → O(1) ✅（只移动 start 指针，不搬移数据）
 ```
 
+*就像旋转门：人走了只是门在转，不是把整栋楼挪一格。*
+
+> 💡 **老师提醒：** 你在实现环形数组时最容易错的是取模和判空/判满条件，建议先拿容量 4 的小数组手动模拟一遍。
+
+> ✅ 能把“为什么必须用环形数组”说清楚，你就比只会背代码的人更强。
+
 ---
 
 ## 4. 数组 vs 链表实现对比
@@ -212,6 +257,8 @@ C++ STL 中：
   stack  底层默认用 deque（双端队列，本质是分块数组）
   queue  底层默认用 deque
 ```
+
+*就像短途通勤骑车最方便，长途搬家用货车更稳，场景决定工具。*
 
 ---
 
