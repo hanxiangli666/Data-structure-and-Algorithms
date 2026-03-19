@@ -1,39 +1,50 @@
 # 深入理解 Session 和 Cookie 笔记
 
-> **核心概览**：Cookie 和 Session 是 Web 开发中最基础的用户状态管理机制。Cookie 存在浏览器端，Session 存在服务器端，两者配合解决了"HTTP 无状态"的问题。理解它们的原理，不仅能搞懂登录、鉴权等常见功能，还能理解很多网站行为背后的逻辑。
+> **核心概览**：Cookie 和 Session 是 Web 开发中最基础的状态管理机制。Cookie 在浏览器端，Session 在服务器端，两者配合解决 HTTP 无状态问题。理解它们，不仅能搞懂登录鉴权，也能理解很多常见安全问题。
 
 ---
 
-## 一、为什么需要 Cookie？——HTTP 的"失忆症"
+## 一、为什么需要 Cookie？——HTTP 的“失忆症”
 
 ### 1.1 问题：HTTP 是无状态协议
 
-HTTP 协议本身**不会记住你是谁**。每次请求对服务器来说都是一个"陌生人"。
+HTTP 协议本身不会记住你是谁。每次请求在服务器看来都像一个新访客。
 
-> **类比**：HTTP 就像一个患了"失忆症"的柜台服务员——你刚跟他说完你叫张三、要办 VIP 业务，转个身再来找他，他就不认识你了，还得重新自我介绍。如果每刷新一次网页就要重新输入账号密码，这谁受得了？
+> **类比**：HTTP 就像一个“失忆”的柜台服务员。你刚告诉他你是谁，转身再来一次，他又不认识你了。
 
-**Cookie 的作用**：服务器给你贴一个"标签"（Cookie），之后你每次来，服务器一看标签就认出你了。
+### 1.2 不用 Cookie 会发生什么？（反例）
 
-### 1.2 Cookie 是什么？
+假设没有 Cookie（也没有其他状态机制），登录流程会变成这样：
 
-**一句话定义**：Cookie 是存储在**浏览器端**的一组键值对，由服务器设置，浏览器自动携带。
+1. 你在 `/login` 输入账号密码并登录成功。
+2. 你点击“个人中心”跳到 `/profile`。
+3. 服务器不知道你刚登录过，要求你再次登录。
+4. 你再点“订单页”到 `/orders`，又要登录一次。
 
-```
-一个 cookie = 一个"变量"，形如 name=value
-```
+这显然不可用。用户每访问一个页面都要重复证明身份，体验会崩溃。
 
-> 服务器可以一次设置多个 Cookie，所以有时说 Cookie 是"一组"键值对。
+> 这就是 Cookie 出现的根本原因：让浏览器在后续请求里自动携带“身份线索”。
 
 ---
 
-## 二、Cookie 的工作流程
+## 二、Cookie 是什么？如何工作？
 
-### 2.1 服务器设置 Cookie
+### 2.1 Cookie 是什么
 
-服务器通过 HTTP 响应头的 **`Set-Cookie`** 字段来设置 Cookie：
+一句话：Cookie 是浏览器端的一组键值对，由服务器通过响应头下发，浏览器按规则自动携带。
+
+```text
+一个 cookie = name=value
+```
+
+服务器可设置多个 Cookie。
+
+### 2.2 服务器设置 Cookie
+
+服务器通过响应头 `Set-Cookie` 下发 Cookie：
 
 ```java
-// Java Servlet 示例：设置两个 cookie
+// Java Servlet 示例
 public void doGet(HttpServletRequest request, HttpServletResponse response) {
     Cookie cookie1 = new Cookie("name1", "value1");
     response.addCookie(cookie1);
@@ -45,304 +56,239 @@ public void doGet(HttpServletRequest request, HttpServletResponse response) {
 }
 ```
 
-### 2.2 完整交互流程
+### 2.3 完整交互流程
 
-```
+```text
 浏览器                                        服务器
-  │                                            │
-  │  ① 第一次请求（没有 Cookie）                  │
-  │ ──────────────────────────────────────────→ │
-  │                                            │
-  │  ② 响应 + Set-Cookie: name1=value1          │
-  │  ②         Set-Cookie: name2=value2          │
-  │ ←────────────────────────────────────────── │
-  │                                            │
-  │  ③ 后续每次请求自动携带：                      │
-  │     Cookie: name1=value1; name2=value2       │
-  │ ──────────────────────────────────────────→ │
-  │                                            │
-  │  ④ 服务器读取 Cookie，认出你是谁              │
+  |                                            |
+  | ① 第一次请求（没有 Cookie）                 |
+  | -----------------------------------------> |
+  |                                            |
+  | ② 响应 + Set-Cookie: name1=value1         |
+  |         Set-Cookie: name2=value2           |
+  | <----------------------------------------- |
+  |                                            |
+  | ③ 后续请求自动携带:                         |
+  |    Cookie: name1=value1; name2=value2      |
+  | -----------------------------------------> |
+  |                                            |
+  | ④ 服务器读取 Cookie，识别请求上下文         |
 ```
 
-**关键点**：
-- 第 ② 步：服务器通过 **`Set-Cookie`** 响应头把 Cookie "种"到浏览器
-- 第 ③ 步：之后浏览器**自动**在每次请求的 **`Cookie`** 请求头中带上这些值
-- 这一切对用户是透明的，不需要手动操作
+关键点：
 
-### 2.3 Cookie 的局限性
+- `Set-Cookie` 在响应里“种”Cookie。
+- 浏览器后续请求会自动带上匹配域名/路径的 Cookie。
+- 用户通常无感知。
+
+### 2.4 Cookie 的局限性
 
 | 局限 | 说明 |
 |------|------|
-| **容量有限** | 单个 Cookie 通常限制 4KB，每个域名的 Cookie 数量也有上限 |
-| **消耗带宽** | Cookie 存在 HTTP Header 中，每次请求都会传输 |
-| **安全隐患** | 存在客户端，用户可以查看和修改，不适合存敏感信息 |
-
-> **例子**：如果把用户的 `role: admin` 直接存在 Cookie 中，用户可以手动改成 `role: superadmin`，这就出大问题了！
-
-**解决方案**：敏感信息不存 Cookie，存 **Session**（服务器端）。
+| 容量有限 | 单个 Cookie 通常约 4KB，域名下数量也有限 |
+| 消耗带宽 | 每次请求都会带上 Cookie Header |
+| 安全风险 | 客户端可见，不适合存敏感业务数据 |
 
 ---
 
-## 三、Session：服务器端的"记忆"
+## 三、Cookie 安全属性与经典攻击
 
-### 3.1 Session 是什么？
+这部分是实际开发高频必备。
 
-**一句话定义**：Session 是存储在**服务器端**的一个数据对象（通常是 JSON），保存用户的会话信息。
+### 3.1 三个关键属性：HttpOnly、Secure、SameSite
+
+| 属性 | 作用 | 解决的主要风险 |
+|------|------|----------------|
+| **HttpOnly** | 禁止 JavaScript 读取 Cookie（`document.cookie` 不可见） | 降低 XSS 窃取 Cookie 风险 |
+| **Secure** | 只允许在 HTTPS 请求中发送 Cookie | 防止明文 HTTP 传输被窃听 |
+| **SameSite** | 控制跨站请求是否携带 Cookie | 缓解 CSRF |
+
+`SameSite` 常见取值：
+
+- `Strict`：最严格，跨站请求基本不带 Cookie。
+- `Lax`：较常用，部分顶级导航会带 Cookie，安全与可用性折中。
+- `None`：允许跨站携带，但必须同时设置 `Secure`。
+
+### 3.2 CSRF 是怎么发生的？（与 SameSite 的关系）
+
+**CSRF（跨站请求伪造）**的核心是：
+
+- 你已登录 `bank.com`，浏览器里有该站 Cookie。
+- 你访问了攻击者页面 `evil.com`。
+- 攻击者诱导你的浏览器向 `bank.com/transfer` 发请求。
+- 如果浏览器自动带上 `bank.com` 的 Cookie，服务器可能误以为是你本人操作。
+
+所以如果没有合适的 `SameSite` 策略和 CSRF Token 保护，就容易被利用。
+
+### 3.3 XSS 与 HttpOnly 的关系
+
+**XSS（跨站脚本）**是指页面被注入恶意 JavaScript。
+
+如果 Session ID 存在 Cookie 且没设 `HttpOnly`，恶意脚本可直接读取：
+
+```javascript
+// 攻击者常见思路（示意）
+const stolen = document.cookie;
+```
+
+拿到 Session ID 后，攻击者可能冒充用户会话。
+
+设置 `HttpOnly` 后，脚本无法读取 Cookie，可显著降低“偷 Session ID”风险。
+
+---
+
+## 四、Session：服务器端的“记忆”
+
+### 4.1 Session 是什么
+
+一句话：Session 是存储在服务器端的会话数据对象，用于保存用户登录态和上下文。
 
 > **类比**：
-> - **Cookie** = 你手上的"会员卡号"（只有一个编号，轻便好携带）
-> - **Session** = 商场后台系统里你的"会员档案"（包含姓名、等级、消费记录等详细信息）
+> - Cookie = 你手上的会员卡号
+> - Session = 商场后台会员档案
 >
-> 你出示会员卡号（Cookie），商场后台用卡号查到你的档案（Session），就知道你是 VIP、该给你打几折。
+> 浏览器带来卡号（Session ID），服务器据此查档案（Session 数据）。
 
-### 3.2 Session + Cookie 的登录流程
+### 4.2 Session + Cookie 的经典登录流程
 
-这是 Web 开发中**最经典的认证流程**：
-
-```
-浏览器                                           服务器
-  │                                               │
-  │  ① 提交账号密码                                 │
-  │ ───────────────────────────────────────────→   │
-  │                                               │
-  │         ② 验证成功，创建 Session：               │
-  │            {                                   │
-  │              "user_id": 12345,                  │
-  │              "username": "张三",                 │
-  │              "role": "admin",                   │
-  │              "login_time": "2025-11-01 10:00"   │
-  │            }                                   │
-  │            生成 Session ID: abcd1234             │
-  │                                               │
-  │  ③ 响应 + Set-Cookie: sessionID=abcd1234       │
-  │ ←─────────────────────────────────────────── │
-  │                                               │
-  │  ④ 访问任何页面，自动带上 Cookie:               │
-  │     sessionID=abcd1234                         │
-  │ ───────────────────────────────────────────→   │
-  │                                               │
-  │         ⑤ 用 sessionID 查到 Session             │
-  │            → 知道你是张三，admin 权限             │
-  │            → 返回个性化页面                       │
+```text
+浏览器                                            服务器
+  |                                                |
+  | ① 提交账号密码                                  |
+  | ---------------------------------------------> |
+  |                                                |
+  | ② 验证成功，创建 Session                        |
+  |    { user_id: 12345, role: "admin", ... }      |
+  |    生成 Session ID: abcd1234                    |
+  |                                                |
+  | ③ 响应 + Set-Cookie: sessionID=abcd1234        |
+  | <--------------------------------------------- |
+  |                                                |
+  | ④ 后续请求自动携带 Cookie: sessionID=abcd1234   |
+  | ---------------------------------------------> |
+  |                                                |
+  | ⑤ 服务器按 sessionID 找到 Session               |
+  |    识别用户并返回业务数据                        |
 ```
 
-**核心要点**：
-- 浏览器只保存一个**随机的 Session ID**（通过 Cookie 传递），不包含任何敏感信息
-- 所有用户数据存在**服务器端**（通常是 Redis 等内存数据库），安全可靠
-- 服务器通过 Session ID 查找对应的 Session，就知道你是谁
+核心要点：
 
-### 3.3 Session 的过期机制
+- 浏览器只持有随机 Session ID。
+- 用户敏感信息保存在服务器端 Session。
+- 服务器通过 Session ID 查找会话状态。
 
-Session 不会永久保存，通常有**过期时间**，例如"三天不活动就自动删除"。
+### 4.3 Session 过期机制
 
-> 这就是为什么你登录某些网站后，**过一段时间不操作就需要重新登录**——你的 Session 过期被服务器删掉了，下次来的时候 Session ID 已经无效。
+Session 通常有过期时间，例如“30 分钟无操作过期”。过期后用户需重新登录。
 
-### 3.4 Cookie 与 Session 对比
+### 4.4 Session 固定攻击（Session Fixation）
+
+**问题**：如果登录成功后继续沿用“登录前的 Session ID”，攻击者可能提前构造或诱导受害者使用某个已知 Session ID。
+
+攻击思路（简化）：
+
+1. 攻击者先拿到一个合法但未登录的 Session ID。
+2. 诱导受害者带着这个 Session ID 访问目标网站。
+3. 受害者登录后，服务器若不更换 Session ID，该 ID 就被绑定到受害者登录态。
+4. 攻击者继续用同一个 Session ID，可能劫持会话。
+
+**防御关键**：登录成功后必须重新生成新的 Session ID（session rotation），并废弃旧 ID。
+
+---
+
+## 五、浏览器对第三方 Cookie 的限制
+
+现代浏览器正在持续收紧第三方 Cookie，这直接影响广告追踪和部分旧认证方案。
+
+### 5.1 什么是第三方 Cookie
+
+- 第一方 Cookie：当前访问站点自己设置的 Cookie。
+- 第三方 Cookie：页面中嵌入的其他域（广告、统计、社交插件）设置的 Cookie。
+
+### 5.2 Safari 和 Chrome 的趋势
+
+- **Safari**：长期通过 ITP（Intelligent Tracking Prevention）严格限制第三方 Cookie，默认环境下跨站跟踪能力很弱。
+- **Chrome**：正在推进第三方 Cookie 逐步禁用与替代方案（Privacy Sandbox），很多用户环境已对第三方 Cookie 有限制。
+
+### 5.3 为什么广告追踪系统受影响
+
+传统广告网络依赖“跨站同一 Cookie”识别用户路径。第三方 Cookie 受限后：
+
+- 难以跨站拼接完整行为链路。
+- 重定向登录和跨站埋点方案需要改造。
+- 行业转向一方数据、服务端跟踪和新隐私 API。
+
+这也是现代 Web 认证与风控方案不断演进的背景。
+
+---
+
+## 六、Cookie 与 Session 速查
 
 | 维度 | Cookie | Session |
 |------|--------|---------|
-| **存储位置** | 浏览器（客户端） | 服务器端（Redis、内存等） |
-| **存储内容** | 键值对（通常是 Session ID） | JSON 对象（用户详细信息） |
-| **安全性** | 低（用户可查看/修改） | 高（用户接触不到） |
-| **容量** | 小（~4KB） | 大（取决于服务器存储） |
-| **生命周期** | 可设置过期时间 | 由服务器控制过期 |
-| **传输** | 每次 HTTP 请求自动携带 | 不传输，只通过 Session ID 引用 |
+| 存储位置 | 浏览器端 | 服务器端 |
+| 常见内容 | Session ID、偏好项 | 用户会话数据（ID、角色、状态） |
+| 安全性 | 较低（可见/可篡改风险） | 较高（用户不可直接访问） |
+| 容量 | 小（约 4KB） | 由服务器资源决定 |
+| 生命周期 | 由 Expires/Max-Age 控制 | 由服务端 TTL/策略控制 |
+| 传输 | 自动随请求发送 | 不直接传输，通过 Session ID 引用 |
 
-### 3.5 有趣的应用：绕过免费试用限制
+安全实践建议：
 
-有些不需要登录的网站提供免费试用次数限制，它是怎么做到的？
-
-> **原理**：通过 Cookie 给你的浏览器设置了一个标识。服务器记录这个标识已经用了几次。
->
-> **理论上**：如果你删除浏览器的 Cookie，服务器就认不出你了，相当于一个"新用户"，可以重新获得试用次数。
->
-> 当然，现代网站可能还会结合 IP 地址、浏览器指纹等手段来识别你，不仅仅依赖 Cookie。
+1. 敏感数据放 Session，不放明文 Cookie。
+2. 认证 Cookie 默认加 `HttpOnly; Secure; SameSite=Lax`（按业务再细调）。
+3. 登录成功后轮换 Session ID。
+4. 对关键写操作叠加 CSRF Token 校验。
 
 ---
 
-## 四、Session 的三层架构实现
+## 七、进阶：Session 的三层架构实现
 
-Session 的原理不难，但工程实现需要精心设计。一般由三个组件配合完成：**Manager**、**Provider** 和 **Session**。
+这一节属于进阶内容。零基础读者先掌握前面“Cookie + Session 基本交互”即可。
 
-### 4.1 为什么不能直接用一个哈希表？
+### 7.1 为什么不能直接一个 HashMap 搞定
 
-你可能会想：直接在代码里用一个 `HashMap<sessionID, 用户信息>` 不就行了？
+直接 `HashMap<sessionID, 用户数据>` 虽然简单，但会遇到：
 
-**问题**：
-1. 程序重启后，内存中的哈希表清空，所有用户都要重新登录
-2. 用户量大时，内存占用过高
-3. 没有过期清理机制，过期 Session 堆积
-4. 无法灵活切换存储方式（内存 → Redis → MySQL）
+1. 进程重启后会话全丢。
+2. 大流量下内存压力与清理复杂。
+3. 过期与淘汰策略难维护。
+4. 不利于在内存/Redis/MySQL 间切换。
 
-所以需要分层设计，各司其职。
+### 7.2 三层架构总览
 
-### 4.2 三层架构总览
-
-```
-┌──────────────────────────────────────────────────────────┐
-│  Handler（请求处理函数）                                   │
-│  从 Cookie 中解析出 sessionID，交给 Manager                │
-└───────────────────────┬──────────────────────────────────┘
-                        ↓
-┌───────────────────────┴──────────────────────────────────┐
-│  Manager（全局配置层）                                     │
-│  负责：Session 过期时间、Cookie 名字、存储方式选择           │
-│  把 sessionID 交给 Provider                               │
-└───────────────────────┬──────────────────────────────────┘
-                        ↓
-┌───────────────────────┴──────────────────────────────────┐
-│  Provider（容器管理层）                                    │
-│  负责：管理所有用户的 Session（增删查改 + 过期清理）          │
-│  用哈希表/哈希链表存储 sessionID → Session 的映射           │
-│  根据 sessionID 找到对应的 Session 对象                    │
-└───────────────────────┬──────────────────────────────────┘
-                        ↓
-┌───────────────────────┴──────────────────────────────────┐
-│  Session（单用户数据层）                                   │
-│  存储单个用户的会话数据（user_id、username、role 等）        │
-│  同时存储辅助数据（sessionID、最后访问时间、过期时间等）       │
-└──────────────────────────────────────────────────────────┘
+```text
+Handler -> Manager -> Provider -> Session
 ```
 
-### 4.3 完整请求流程举例
+- **Session**：单用户会话对象，存键值与元信息。
+- **Provider**：管理所有 Session（增删查改、过期清理）。
+- **Manager**：全局配置与协调（TTL、Cookie 名、存储实现选择）。
 
-**场景**：用户（已登录）访问 `/profile` 个人中心页面
-
-```
-用户浏览器发送请求: GET /profile
-Cookie: sessionID=abcd1234
-        │
-        ↓
-① Handler 接收请求
-   → 从 Cookie 中解析出 sessionID = "abcd1234"
-   → 交给 Manager
-        │
-        ↓
-② Manager（全局配置）
-   → 确认 Cookie 名为 "sessionID"，过期时间 2 小时
-   → 把 "abcd1234" 交给 Provider 查找
-        │
-        ↓
-③ Provider（容器）
-   → 在哈希表中查找 "abcd1234"
-   → 找到张三的 Session 对象，返回
-        │
-        ↓
-④ Session（张三的数据）
-   → { user_id: 12345, username: "张三", role: "admin" }
-   → Handler 拿到数据，生成页面："欢迎回来，张三！"
-   → 返回给浏览器
-```
-
-### 4.4 每一层的职责与接口
-
-#### Session 层：单个用户的数据存取
+### 7.3 示例接口
 
 ```java
 interface Session {
-    void set(String key, Object value);   // 设置键值对
-    Object get(String key);               // 获取值
-    void delete(String key);              // 删除键
+    void set(String key, Object value);
+    Object get(String key);
+    void delete(String key);
 }
-```
 
-**为什么需要独立的 Session 层？**
-
-| 原因 | 说明 |
-|------|------|
-| **存储辅助数据** | 除了业务数据（user_id 等），还需存储 sessionID、最后访问时间、过期时间，用于过期清理 |
-| **屏蔽存储差异** | Session 可以存在内存、Redis、MySQL 中，统一接口让上层代码无需关心底层实现 |
-
-> **类比**：Session 层就像一个标准化的"档案袋"——不管档案袋是纸质的、电子的还是云端的，你都用同样的方式打开、读取、修改内容。
-
-#### Provider 层：管理所有用户的 Session
-
-```java
 interface Provider {
-    Session sessionCreate(String sid);         // 创建新 Session
-    void sessionDestroy(String sid);           // 销毁 Session
-    Session sessionRead(String sid);           // 查找 Session
-    void sessionUpdate(String sid);            // 更新 Session
-    void sessionGC(long maxLifeTime);          // 垃圾回收：清理过期 Session
+    Session sessionCreate(String sid);
+    void sessionDestroy(String sid);
+    Session sessionRead(String sid);
+    void sessionUpdate(String sid);
+    void sessionGC(long maxLifeTime);
 }
 ```
 
-**为什么需要独立的 Provider 层？**
+### 7.4 分层的价值
 
-| 原因 | 说明 |
-|------|------|
-| **过期清理** | 网站可能有上万在线用户，需要自动清理过期 Session（如用 LRU 算法淘汰最久未访问的 Session） |
-| **封装复杂逻辑** | LRU 需要哈希链表等复杂数据结构，Provider 封装这些细节，只对外暴露简单的增删查改接口 |
+| 层级 | 主要职责 | 可替换性 |
+|------|----------|---------|
+| Session | 单会话数据结构 | 可替换底层存储结构 |
+| Provider | 会话容器与淘汰策略 | 可替换 TTL/LRU/LFU 策略 |
+| Manager | 全局配置与路由 | 可替换环境参数与实现绑定 |
 
-> **类比**：Provider 层就像"档案室管理员"——他负责所有档案袋的存放、查找和定期清理过期档案。你不需要知道档案室内部是怎么排列的，只要告诉管理员档案编号，他就能帮你找到。
-
-#### Manager 层：全局配置中心
-
-Manager 负责的全局配置包括：
-
-| 配置项 | 示例 |
-|-------|------|
-| Session 过期时间 | 30 分钟？2 小时？3 天？ |
-| Cookie 的名字 | `sessionID`？`sid`？`JSESSIONID`？ |
-| Session 的存储方式 | 内存？Redis？MySQL？ |
-
-**为什么需要独立的 Manager 层？**
-
-具体的增删查改都交给 Provider 和 Session 了，Manager 只负责**配置和协调**。这样可以灵活切换实现：
-
-> **类比**：Manager 就像"档案室主任"——他不亲自管理档案，而是制定规章制度（保存多久、用什么编号系统、档案室用什么材料建）。换一个主任，换一套规章，但档案管理员的工作流程不受影响。
-
-```
-开发环境 → Manager 配置用内存存储（方便调试）
-生产环境 → Manager 配置用 Redis 存储（高性能、持久化）
-```
-
-### 4.5 三层架构的核心价值：解耦
-
-| 层级 | 职责 | 可替换性 |
-|------|------|---------|
-| **Session** | 处理单个用户的数据 | 可替换存储引擎（内存 / Redis / MySQL） |
-| **Provider** | 管理所有用户的 Session | 可替换淘汰策略（LRU / LFU / TTL） |
-| **Manager** | 全局配置和协调 | 可替换配置参数，无需改动底层逻辑 |
-
-> 每一层都可以**独立替换实现**，互不影响——这就是分层架构的价值。
-
----
-
-## 五、总结速查
-
-### Cookie vs Session 一图流
-
-```
-┌─────────────────────────────────────────────────────┐
-│                    浏览器（客户端）                     │
-│                                                      │
-│   Cookie: sessionID=abcd1234                         │
-│   （只存一个编号，轻便安全）                             │
-└──────────────────────┬───────────────────────────────┘
-                       │ 每次请求自动携带
-                       ↓
-┌──────────────────────┴───────────────────────────────┐
-│                    服务器端                            │
-│                                                      │
-│   Session（存在 Redis 等数据库中）：                     │
-│   "abcd1234" → {                                     │
-│       user_id: 12345,                                │
-│       username: "张三",                               │
-│       role: "admin"                                  │
-│   }                                                  │
-│   （存储完整用户信息，安全可靠）                          │
-└──────────────────────────────────────────────────────┘
-```
-
-### 关键知识点清单
-
-| 知识点 | 要点 |
-|-------|------|
-| HTTP 无状态 | 服务器不会记住你，每次请求都是"陌生人" |
-| Cookie 本质 | 浏览器端的键值对，服务器通过 `Set-Cookie` 设置，浏览器自动携带 |
-| Session 本质 | 服务器端的数据对象，存储用户会话信息 |
-| 两者关系 | Cookie 携带 Session ID → 服务器用 ID 查找 Session → 识别用户 |
-| Session 过期 | 服务器定期清理，导致用户需要重新登录 |
-| 三层架构 | Session（数据）→ Provider（管理）→ Manager（配置），层层解耦 |
-| 安全原则 | 敏感信息存 Session（服务器端），不存 Cookie（客户端） |
+> 价值总结：通过解耦，系统可在不改业务代码的前提下升级存储与策略。

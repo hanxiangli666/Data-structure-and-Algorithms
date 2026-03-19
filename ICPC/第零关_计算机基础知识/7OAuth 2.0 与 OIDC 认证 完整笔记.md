@@ -2,341 +2,258 @@
 
 ---
 
-## 一、背景：为什么需要 OIDC？
+## 一、先看路标：OIDC vs OAuth 2.0 全面对比
 
-### OAuth 2.0 的局限性
+先看这张表，再进入细节会更清晰。
 
-标准的 OAuth 2.0  **只能做授权，不能做认证** 。
-
-> **类比理解：**
->
-> OAuth 2.0 就像一张"访客通行证"——保安（Google）给了快递员（ExampleNote）一张通行证，让他可以进入仓库取货（访问 Google Drive）。但这张通行证 **并不能证明快递员是谁** ，只说明他有权限拿货。
->
-> 如果有人偷了这张通行证，保安也无从分辨真假。
-
-**具体问题：** 授权码明文暴露在 URL 中，黑客截获授权码后，可以在真实用户之前抢先访问回调地址，从而 **冒充用户身份登录** 。
-
-### OIDC 的解决方案
-
-**OpenID Connect（OIDC）** 是构建在 OAuth 2.0 之上的 **认证协议层** ，在保留 OAuth 2.0 授权能力的基础上，增加了安全的身份认证能力。
+| 特性 | OAuth 2.0 | OIDC |
+|------|-----------|------|
+| 主要用途 | 授权（你能做什么） | 认证 + 授权（你是谁 + 你能做什么） |
+| 核心产物 | Access Token | ID Token + Access Token |
+| Token 语义 | 访问资源凭证 | 身份凭证（ID Token）+ 访问凭证 |
+| scope 关键值 | 业务 scope（如 `drive.readonly`） | 必须包含 `openid` |
+| nonce | 可选 | 认证流程中关键参数 |
+| 典型场景 | 第三方应用访问用户资源 | 第三方登录、单点登录（SSO） |
 
 ---
 
-## 二、OIDC 的应用场景
+## 二、背景：为什么需要 OIDC？
 
-| 场景                               | 说明                            | 举例                                       |
-| ---------------------------------- | ------------------------------- | ------------------------------------------ |
-| **跨组织认证（第三方登录）** | A 应用借用 B 的认证服务实现登录 | 用 Google 账号登录 ExampleNote             |
-| **单点登录（SSO）**          | 同一组织内多个子系统统一登录    | 登录一次 Google，Gmail/Drive/Docs 均可访问 |
+### 2.1 OAuth 2.0 的局限性
+
+标准 OAuth 2.0 主要解决“授权”，并不直接定义“可靠认证”。
+
+> 类比：OAuth 2.0 像访客通行证，证明“可访问某资源”，不直接证明“持证人真实身份是谁”。
+
+### 2.2 OIDC 的解决方案
+
+OpenID Connect（OIDC）构建在 OAuth 2.0 之上，增加认证语义和机制：
+
+1. `nonce`（防重放与结果绑定）
+2. `id_token`（标准身份令牌，JWT）
+3. `/userinfo`（可选的标准用户信息接口）
+4. Discovery 与 JWKS（动态发现端点和公钥）
 
 ---
 
-## 三、核心术语
+## 三、OIDC 的应用场景
 
-| 术语                             | 含义                         | 对应 OAuth 2.0 概念     |
-| -------------------------------- | ---------------------------- | ----------------------- |
-| **OP** （OpenID Provider） | 认证服务器，负责验证用户身份 | Authorization Server    |
-| **RP** （Relying Party）   | 依赖方，即各个应用           | Client                  |
-| **ID Token**               | 存储用户身份信息的 JWT 令牌  | 无对应概念（OIDC 新增） |
+| 场景 | 说明 | 举例 |
+|------|------|------|
+| 跨组织认证（第三方登录） | A 应用借用 B 的身份系统 | 用 Google 账号登录 ExampleNote |
+| 单点登录（SSO） | 统一身份，多个系统共享登录态 | 登录一次后访问 Gmail/Drive/Docs |
 
 ---
 
-## 四、OIDC 与 OAuth 2.0 的关系
+## 四、核心术语
 
+| 术语 | 含义 | 对应 OAuth 2.0 概念 |
+|------|------|--------------------|
+| OP（OpenID Provider） | 认证提供方 | Authorization Server |
+| RP（Relying Party） | 依赖方应用 | Client |
+| ID Token | 身份令牌（JWT） | OIDC 新增 |
+| UserInfo Endpoint | 用户信息接口 | OIDC 新增 |
+
+---
+
+## 五、OIDC 与 OAuth 2.0 的关系
+
+```text
+OIDC
+└─ OAuth 2.0（授权码流程、Access Token）
+   + ID Token
+   + nonce
+   + UserInfo / Discovery 等标准能力
 ```
-┌─────────────────────────────────────┐
-│              OIDC                   │
-│  ┌───────────────────────────────┐  │
-│  │         OAuth 2.0             │  │
-│  │  授权码流程 / Access Token    │  │
-│  └───────────────────────────────┘  │
-│  + nonce 参数                       │
-│  + ID Token（JWT格式）              │
-└─────────────────────────────────────┘
+
+---
+
+## 六、两个关键新增机制
+
+### 6.1 nonce 参数
+
+#### 先看工作原理图
+
+```text
+用户浏览器                RP（ExampleNote）                 OP（Google）
+   |                              |                             |
+   | 点击“用Google登录”            |                             |
+   |----------------------------->|                             |
+   |                              | 生成 nonce=nonce_abc123     |
+   |                              | 保存到本地会话 Session       |
+   |                              |----------------------------->|
+   |                              | 发起授权请求（带 nonce）      |
+   |----------------------------------------------------------->|
+   |                              |                             |
+   |<-----------------------------| 回调带 code + (ID Token中nonce)
+   |                              |                             |
+   |                              | 对比：ID Token.nonce
+   |                              |       == Session.nonce ?
+   |                              |   是 -> 继续登录
+   |                              |   否 -> 拒绝（疑似重放/串改）
 ```
 
-**OIDC = OAuth 2.0 的全部能力 + 身份认证能力**
+#### 再看文字解释
 
----
+`nonce` 是 RP 生成的一次性随机值，用来把“这次认证返回结果”绑定到“这次认证请求”。
 
-## 五、两个关键新增机制
+核心意义：防重放、抗认证结果混淆。
 
-### 5.1 nonce 参数
+### 6.2 ID Token（JWT 格式）
 
-#### 是什么？
+ID Token 是 OIDC 的身份凭证，包含用户身份与上下文字段。
 
-`nonce`（Number used ONCE，一次性数字）是由客户端（RP）生成的 **随机字符串** ，与用户的 Session 绑定。
-
-#### 解决什么问题？
-
-防止 **重放攻击** （Replay Attack）——即黑客截获授权码后冒充用户登录。
-
-#### 工作原理（关键！）
-
-> **类比理解：**
->
-> nonce 就像取号机的号码牌。你（用户）去银行（Google）取了一个号 `A001`，银行把你的号码记在了你的账户里。
->
-> 黑客偷看到了你的号码 `A001`，但他自己的账户里记的是另一个号 `A002`。
->
-> 当黑客拿着 `A001` 去柜台（ExampleNote 服务器）时，柜台一查他的账户，发现对应的号应该是 `A002`，不匹配，直接拒绝。
-
-**具体流程：**
-
-1. 用户点击「用 Google 登录」，ExampleNote 服务器为**该用户**生成专属 Session：
-   ```json
-   "user_session_xyz456": {  "nonce": "nonce_abc123"}
-   ```
-2. Session ID `user_session_xyz456` 通过 `Set-Cookie` 发送给用户浏览器（存在 Cookie 中，黑客无法获取）。
-3. `nonce=nonce_abc123` 随 URL 参数传给 Google（黑客可以看到，但没用）。
-4. 黑客同时登录时，服务器为黑客生成**另一套** Session 和 nonce：
-   ```json
-   "user_session_aaaa": {  "nonce": "nonce_bbbb"}
-   ```
-5. 黑客拿着截获的 `nonce_abc123`，但其 Session 关联的是 `nonce_bbbb`， **服务端验证不通过，直接拒绝** 。
-
-#### 关键假设
-
-> ⚠️ Cookie 是安全的——浏览器对 Cookie 有严格的安全限制，防止恶意代码访问。
->
-> 如果黑客能窃取 Cookie，那就相当于直接拿到了"钥匙"，所有认证机制都会失效。
->
-> **安全建议：不要泄露 Cookie，不要使用非官方浏览器，不要在来路不明的应用上登录。**
-
----
-
-### 5.2 ID Token（JWT 格式）
-
-#### 是什么？
-
-ID Token 是一个 **JWT（JSON Web Token）格式**的签名令牌，包含用户的身份信息，专门用于 **认证** （证明"你是谁"）。
-
-> **类比理解：**
->
-> ID Token 就像护照——由权威机构（Google）签发，包含持有人的身份信息，且带有防伪签名，任何人都可以用已知的方式验证真伪，但无法伪造。
-
-#### ID Token vs Access Token 对比
-
-| 对比项           | Access Token                     | ID Token                             |
-| ---------------- | -------------------------------- | ------------------------------------ |
-| **用途**   | 访问资源（授权）——"你能做什么" | 证明身份（认证）——"你是谁"         |
-| **格式**   | 任意（客户端无需解析）           | JWT（客户端需要解析和验证）          |
-| **使用方** | 直接用于访问资源服务器           | ExampleNote 服务器需要验证后才能登录 |
-
-#### ID Token 的 Payload 示例
+示例 Payload：
 
 ```json
 {
-  "iss": "https://accounts.google.com",    // 颁发者：Google 授权服务器
-  "sub": "tom_user_id",                    // 主体：用户在 Google 的唯一 ID
-  "aud": "examplenote_client_id",          // 受众：这个 Token 是给 ExampleNote 的
-  "exp": 1738278000,                       // 过期时间：2025-01-31 07:00:00
-  "iat": 1735686000,                       // 颁发时间：2025-01-01 07:00:00
-  "nonce": "nonce_abc123",                 // 防重放攻击的随机数
-  "email": "tom@gmail.com",               // 用户邮箱
-  "name": "Tom"                           // 用户姓名
+  "iss": "https://accounts.google.com",
+  "sub": "tom_user_id",
+  "aud": "examplenote_client_id",
+  "exp": 1738278000,
+  "iat": 1735686000,
+  "nonce": "nonce_abc123",
+  "email": "tom@gmail.com",
+  "name": "Tom"
 }
 ```
 
-**翻译成人话：**
+---
 
-> 我是 Google 服务器，我给 ExampleNote 颁发了这个凭证。
-> 刚才有个用户（ID: `tom_user_id`，邮箱: `tom@gmail.com`，名字: `Tom`）在我这里成功登录了。
-> 这个凭证 2025-01-01 生效，2025-01-31 过期。
-> 你可以用我（Google）的公钥验证这条信息的真实性。
+## 七、OIDC 完整授权码流程
 
-#### ExampleNote 收到 ID Token 后的验证步骤
+### 7.1 请求参数差异
 
+OAuth 2.0（纯授权）：
+
+```text
+.../authorize?
+response_type=code&
+client_id=...&
+redirect_uri=...&
+scope=drive.readonly
 ```
-1. 用 Google 公钥验证 JWT 签名（确保内容未被篡改）
-2. 检查 aud 字段（确认这个 Token 是给自己的）
-3. 检查 iat 和 exp 字段（确认 Token 未过期）
-4. 检查 nonce 字段（与用户 Session 中的 nonce 对比，防重放攻击）
-5. 提取用户信息，登录成功 ✅
+
+OIDC（认证 + 授权）：
+
+```text
+.../authorize?
+response_type=code&
+client_id=...&
+redirect_uri=...&
+scope=openid,drive.readonly&
+nonce=nonce_abc123&
+state=random_state_xyz
+```
+
+说明：
+
+- `openid`：触发 OIDC 认证语义。
+- `nonce`：绑定 ID Token 与本次登录交互。
+- `state`：防 CSRF，绑定前后端授权请求。
+
+### 7.2 时序图（简化）
+
+```text
+浏览器 -> RP: 发起登录
+RP -> 浏览器: 重定向到 OP 授权页（含 state、nonce）
+浏览器 -> OP: 用户登录并同意
+OP -> 浏览器: 回调 RP（code + state）
+RP -> OP: code 换 token（后端通道）
+OP -> RP: 返回 id_token + access_token
+RP: 校验 state、验签 id_token、校验 claims、校验 nonce
+RP -> 浏览器: 登录成功
 ```
 
 ---
 
-## 六、OIDC 完整授权码流程
+## 八、UserInfo 端点：ID Token 之外的补充信息
 
-### 与 OAuth 2.0 的请求参数区别
+OIDC 标准还定义了 `/userinfo` 接口。RP 可以用 Access Token 获取更多用户资料。
 
-**OAuth 2.0（纯授权）：**
+### 8.1 什么时候 ID Token 里的信息就够用
 
-```
-https://accounts.google.com/oauth/authorize?
-  response_type=code&
-  client_id=examplenote_client_id&
-  redirect_uri=https://examplenote.com/callback&
-  scope=drive.readonly                       ← 只有业务权限
-```
+适合场景：
 
-**OIDC（授权 + 认证）：**
+- 你只需要最小身份字段（`sub`、`email`、`name`）完成登录和账号绑定。
+- 希望减少一次网络调用，提高登录响应速度。
 
-```
-https://accounts.google.com/oauth/authorize?
-  response_type=code&
-  client_id=examplenote_client_id&
-  redirect_uri=https://examplenote.com/callback&
-  scope=openid,drive.readonly&               ← 新增 openid（触发 OIDC）
-  nonce=nonce_abc123                         ← 新增 nonce（防重放攻击）
-```
+### 8.2 什么时候需要额外调用 UserInfo
 
-> 💡 一次请求中可以同时包含多个 scope，用户只需确认一次，即可同时完成 **认证** （openid）和 **授权** （drive.readonly）。
+适合场景：
 
----
+- 需要更完整或最新的用户资料（头像、地区、语言等）。
+- 希望按 scope 动态获取不同信息集。
+- ID Token 里没有你需要的字段，或字段不是最新状态。
 
-### 完整流程时序图
-
-```
-用户浏览器          ExampleNote 服务器          Google 授权服务器
-    │                      │                           │
-    │  点击"用Google登录"   │                           │
-    │──────────────────────▶│                           │
-    │                      │  生成 nonce，存入 Session  │
-    │                      │  通过 Set-Cookie 发 Session ID
-    │◀─────────────────────│                           │
-    │                      │                           │
-    │  重定向到 Google 授权页（URL含nonce和scope=openid,drive.readonly）
-    │──────────────────────────────────────────────────▶│
-    │                      │                           │
-    │                      │                    显示登录页面
-    │◀──────────────────────────────────────────────────│
-    │                      │                           │
-    │  输入账号密码，点击授权│                           │
-    │──────────────────────────────────────────────────▶│
-    │                      │                           │
-    │  重定向回 ExampleNote（URL含授权码 code）          │
-    │◀──────────────────────────────────────────────────│
-    │                      │                           │
-    │  浏览器访问回调地址（携带 code）                   │
-    │──────────────────────▶│                           │
-    │                      │  用 code + client_secret  │
-    │                      │  换取 ID Token + Access Token
-    │                      │──────────────────────────▶│
-    │                      │                           │
-    │                      │  返回 ID Token + Access Token
-    │                      │◀──────────────────────────│
-    │                      │                           │
-    │                      │  验证 ID Token 签名和 nonce│
-    │                      │  更新 Session，用户登录成功│
-    │◀─────────────────────│                           │
-    │  登录成功              │                           │
-```
-
-### 分步骤详解
-
-#### 步骤 1：前置准备
-
-ExampleNote 的开发者提前在 Google 开发者平台注册，获得：
-
-* `client_id`（公开标识符）
-* `client_secret`（私密密钥，服务器端保存）
-
-#### 步骤 2：生成 nonce，发起授权请求
-
-```
-用户点击登录 →
-ExampleNote 服务器生成 nonce（如 nonce_abc123），存入用户 Session →
-将 Session ID 通过 Set-Cookie 发送给浏览器 →
-重定向浏览器到 Google 授权页（URL 携带 nonce 和 scope=openid,...）
-```
-
-#### 步骤 3：用户在 Google 登录并授权
-
-用户输入 Google 账号密码，并同意授权 Google Drive 只读权限。
-
-#### 步骤 4：Google 返回授权码
-
-```
-Google 重定向浏览器回：
-https://examplenote.com/callback?code=AUTH_CODE_12345
-```
-
-#### 步骤 5：服务器用授权码换取 Token
-
-ExampleNote 服务器向 Google Token 端点发起请求（ **服务器间通信，不经过浏览器** ）：
+请求示意：
 
 ```http
-POST https://oauth2.googleapis.com/token
-Content-Type: application/x-www-form-urlencoded
-
-grant_type=authorization_code&
-code=AUTH_CODE_12345&
-redirect_uri=https://examplenote.com/callback&
-client_id=examplenote_client_id&
-client_secret=examplenote_secret
-```
-
-#### 步骤 6：Google 返回 ID Token 和 Access Token
-
-```json
-{
-  "access_token": "example.abcdefg...",
-  "token_type": "Bearer",
-  "expires_in": 3600,
-  "id_token": "eyJhbG..."          ← OIDC 新增的 ID Token
-}
-```
-
-#### 步骤 7：验证 ID Token
-
-```
-验证 JWT 签名（Google 公钥） →
-检查 aud 是否为自己的 client_id →
-检查 exp 确认未过期 →
-检查 nonce 与 Session 中的值是否一致 →
-提取用户信息（sub, email, name...）
-```
-
-#### 步骤 8：登录成功
-
-```
-更新用户信息 →
-更新 Session，标记用户已登录 →
-（可选）使用 Access Token 访问用户的 Google Drive
+GET /userinfo
+Authorization: Bearer <access_token>
 ```
 
 ---
 
-## 七、OIDC vs OAuth 2.0 全面对比
+## 九、ID Token 验证步骤为什么不能省
 
-| 特性                 | OAuth 2.0                       | OIDC                               |
-| -------------------- | ------------------------------- | ---------------------------------- |
-| **主要用途**   | 授权（你能做什么）              | 认证 + 授权（你是谁 + 你能做什么） |
-| **核心产物**   | Access Token                    | ID Token + Access Token            |
-| **Token 格式** | 任意，客户端无需解析            | JWT，客户端需要解析和验证          |
-| **scope 参数** | 自定义（如 `drive.readonly`） | 必须包含 `openid`                |
-| **nonce 参数** | 可选                            | 必须（防重放攻击）                 |
-| **典型场景**   | 第三方应用访问用户资源          | 第三方登录、单点登录（SSO）        |
+任何一步省略，都可能映射到真实攻击面。
 
----
+1. 验签（Signature）：
+   不验签 -> 攻击者可伪造 token 内容。
 
-## 八、知识总结
+2. 验 `aud`（受众）：
+   不验 aud -> A 应用的 ID Token 可能被拿去骗 B 应用（令牌错投攻击）。
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                        OIDC 核心要点                        │
-├─────────────────────────────────────────────────────────────┤
-│ 1. OIDC = OAuth 2.0 + 身份认证                             │
-│    复用授权码流程，额外增加 nonce 和 ID Token               │
-│                                                             │
-│ 2. nonce 防重放攻击                                         │
-│    nonce 与用户 Session（存在 Cookie 中）绑定               │
-│    即使授权码被截获，无法伪造对应的 nonce+Session           │
-│                                                             │
-│ 3. ID Token（JWT）用于身份证明                              │
-│    包含 iss/sub/aud/exp/iat/nonce 等标准字段                │
-│    RP 需要验证签名、受众、有效期、nonce                     │
-│                                                             │
-│ 4. 一次流程，同时完成认证和授权                             │
-│    scope=openid（认证）+ drive.readonly（授权）             │
-└─────────────────────────────────────────────────────────────┘
-```
+3. 验 `iss`（签发者）：
+   不验 iss -> 非预期提供方签发的 token 也可能被接受。
+
+4. 验 `exp` / `nbf` / `iat`（时间相关）：
+   不验 exp -> 过期 token 可被重放；
+   不验 nbf/iat -> 时序异常 token 可能被接受。
+
+5. 验 `nonce`（前端交互绑定）：
+   不验 nonce -> 可能被重放旧认证结果，导致会话混淆。
+
+结论：ID Token 验证是一个“组合防线”，不是单点校验。
 
 ---
 
-## 九、延伸阅读（前置 & 后续）
+## 十、Discovery 端点：工程实践里的关键能力
 
-* **前置知识：** 认证与授权的区别、OAuth 2.0 授权框架、Session 和 Cookie、JWT
-* **后续知识：** 单点登录（SSO）——现代 SSO 同样基于 OIDC
+OIDC 提供固定发现地址：
+
+```text
+https://<issuer>/.well-known/openid-configuration
+```
+
+这个文档会告诉客户端：
+
+- `authorization_endpoint`
+- `token_endpoint`
+- `userinfo_endpoint`
+- `jwks_uri`（公钥集合地址）
+- 支持的签名算法、claims、response types 等
+
+工程价值：
+
+1. 客户端无需硬编码所有端点地址。
+2. 提供方变更端点时，客户端可动态发现。
+3. 公钥轮换可通过 `jwks_uri` 自动适配，降低运维风险。
+
+---
+
+## 十一、知识总结
+
+```text
+OIDC = OAuth 2.0 + 认证能力
+关键新增：openid scope、ID Token、nonce、UserInfo、Discovery
+核心校验：state（防CSRF）+ ID Token 全量 claim 校验
+```
+
+---
+
+## 十二、延伸阅读
+
+- 前置：认证与授权、OAuth 2.0、Session/Cookie、JWT
+- 后续：PKCE、企业级 SSO、前后端分离下的 Token 存储策略

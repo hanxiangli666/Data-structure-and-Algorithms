@@ -4,313 +4,256 @@
 
 ## 一、背景：授权码流程的隐含前提
 
-在标准 OAuth 2.0 授权码流程中，有一个关键步骤：
+标准 OAuth 2.0 授权码流程中有一步：
 
-```
-客户端服务器 用 授权码 + client_secret → 换取 Access Token
-```
-
-这个流程有一个 **隐含的前提** ：客户端能够安全保管 `client_secret`。
-
-> **类比理解：**
->
-> `client_secret` 就像是应用的"身份证密码"。服务器端应用把密码锁在保险箱里，任何外人都拿不到。但如果你把保险箱直接发给用户（比如打包进 App），用户可以撬开它，密码就暴露了。
-
----
-
-## 二、客户端类型（Client Types）
-
-OAuth 2.0 根据能否安全保管 `client_secret`，将客户端分为两类：
-
-| 类型                                         | 说明                           | 典型例子                                             |
-| -------------------------------------------- | ------------------------------ | ---------------------------------------------------- |
-| **可信客户端** （Confidential Client） | 能安全保管 `client_secret`   | 服务器端 Web 应用（secret 存在服务器上，用户不可见） |
-| **不可信客户端** （Public Client）     | 无法安全保管 `client_secret` | 移动 App（Android/iOS）、SPA 单页应用、桌面应用      |
-
-### 为什么移动 App 是不可信客户端？
-
-以 Android App 为例：
-
-* `client_secret` 必须写入代码或配置文件
-* **Android APK 可以被反编译**
-* 任何人都能从 APK 中提取出 `client_secret`
-* 即使做代码混淆、加固，也只是增加难度，**无法从根本上解决问题**
-
----
-
-## 三、不可信客户端的两难困境
-
-```
-┌──────────────────────────────────────────────────────┐
-│                   不可信客户端的困境                  │
-├──────────────────────────────────────────────────────┤
-│  困境 1：带 client_secret                            │
-│    APK 被反编译 → 黑客提取 secret → 冒充你的应用     │
-│                                                      │
-│  困境 2：不带 client_secret                          │
-│    黑客截获授权码 → 直接换 Token → 获取用户资源      │
-│                        ↑                             │
-│              授权码拦截攻击（Code Interception）      │
-└──────────────────────────────────────────────────────┘
-           带了会泄露，不带又不安全，怎么办？
+```text
+客户端用 授权码 + client_secret -> 换 Access Token
 ```
 
-**解决方案：PKCE**
+隐含前提是：客户端可以安全保管 `client_secret`。
+
+- 服务器端 Web 应用：通常可以。
+- 移动 App、SPA、桌面应用：通常不可以。
 
 ---
 
-## 四、PKCE 核心思路
+## 二、先看威胁：没有 PKCE 时，授权码如何被截获并利用
 
- **PKCE** （Proof Key for Code Exchange，读作 "pixy"）的核心思想：
+在讲 PKCE 前，先看完整攻击链路。
 
-> 既然**静态的** `client_secret` 会泄露，那就用**动态生成的「一次性密钥」**代替。
+```text
+用户                客户端(App/SPA)             授权服务器(OP)             攻击者App
+ |                        |                          |                          |
+ | 1. 发起登录             |                          |                          |
+ |----------------------->|                          |                          |
+ |                        | 2. 跳转授权页             |                          |
+ |                        |------------------------->|                          |
+ |                        |                          |                          |
+ | 3. 用户同意授权         |                          |                          |
+ |-------------------------(浏览器交互)---------------------------------------> |
+ |                        |                          |                          |
+ |                        | 4. 回调 redirect_uri?code=AUTH_CODE               |
+ |                        |<-------------------------|                          |
+ |                        |                          | 5. 攻击者截获 code        |
+ |                        |                          |-------------------------> |
+ |                        |                          |                          |
+ |                        |                          | 6. 攻击者用 code 换 token  |
+ |                        |                          |<------------------------- |
+ |                        |                          |                          |
+ |                        | 7. 攻击者拿到 Access Token，冒用资源访问            |
+```
 
-> **类比理解：**
->
-> 传统方式就像所有人用同一把钥匙（`client_secret`）开锁，一旦钥匙被复制，谁都能开。
->
-> PKCE 就像每次都临时换锁——每次授权流程开始前，App 自己造一把新锁（`code_challenge`），把锁交给服务器，然后用钥匙（`code_verifier`）去开。锁是公开的，但钥匙只在自己手里，别人就算拿到锁也没用。
+攻击成立的关键点：
 
-### 「一次性密钥」的特点
+1. 授权码在前端回调链路中可见。
+2. Public Client 无法可靠保管 `client_secret`，无法形成强客户端证明。
+3. 攻击者只要先一步拿到 code，就可能先换到 token。
 
-| 特点               | 说明                               |
-| ------------------ | ---------------------------------- |
-| **动态生成** | 每次授权请求都不同，无法提前获取   |
-| **仅存内存** | 不写入代码或配置文件               |
-| **哈希验证** | 利用单向哈希函数的不可逆性保证安全 |
+> 这就是 PKCE 的威胁模型：防“授权码被截获后被他人兑换”。
 
 ---
 
-## 五、PKCE 工作原理详解
+## 三、客户端类型（Client Types）
 
-### 前置准备
+| 类型 | 说明 | 典型例子 |
+|------|------|---------|
+| Confidential Client | 可安全保管 `client_secret` | 服务器端 Web 应用 |
+| Public Client | 无法安全保管 `client_secret` | Android/iOS、SPA、桌面应用 |
 
-Android App 开发者在 Google 开发者平台注册，选择"Android 应用类型"：
+### 为什么移动 App 是 Public Client
 
-* ✅ 获得 `client_id`（公开标识符）
-* ❌ **没有** `client_secret`（因为是不可信客户端）
+- 二进制可被反编译。
+- `client_secret` 若写进包体，迟早可被提取。
+- 混淆/加固只能提高门槛，不能从根本上保证机密性。
+
+### 移动端 redirect_uri 的真实风险
+
+移动端常用自定义 URL Scheme 回调，如 `myapp://callback`。
+
+风险在于：
+
+- 其他 App 也可能注册同名 Scheme。
+- 系统路由可能被恶意 App 抢占或劫持。
+- 结果是授权码回调可能被非预期 App 接收。
+
+这不是理论问题，而是 PKCE 明确要防的现实攻击面。
 
 ---
 
-### 完整流程（以 Android App 接入 Google Drive 为例）
+## 四、不可信客户端的两难
+
+```text
+困境 1：带 client_secret
+  -> 包体可逆向，secret 泄露
+
+困境 2：不带 client_secret
+  -> code 被截获后可被攻击者兑换
+```
+
+带了会泄露，不带又不安全。
+
+**解决方案：PKCE**。
+
+---
+
+## 五、PKCE 核心思路
+
+PKCE（Proof Key for Code Exchange）用“每次授权动态生成的一次性证明”替代静态 secret。
+
+核心对象：
+
+1. `code_verifier`：客户端本地生成的高熵随机串（机密）。
+2. `code_challenge`：由 `code_verifier` 变换得到（可公开）。
+
+授权阶段上送 challenge，换 token 阶段提交 verifier，授权服务器比对后决定是否发 token。
+
+---
+
+## 六、code_challenge_method：为什么必须用 S256 而不是 plain
+
+PKCE 里 `code_challenge_method` 常见两种：
+
+1. `plain`：
+   - `code_challenge = code_verifier`
+   - 问题：challenge 被截获就等于 verifier 泄露，失去 PKCE 保护。
+
+2. `S256`：
+   - `code_challenge = BASE64URL(SHA256(code_verifier))`
+   - 优势：challenge 可公开，但无法反推 verifier。
+
+结论：
+
+- 生产环境应强制 `S256`。
+- `plain` 仅为兼容历史/受限环境，不应作为默认或推荐方案。
+
+---
+
+## 七、PKCE 工作原理详解
+
+### 7.1 前置准备
+
+客户端注册后通常拿到：
+
+- `client_id`（公开）
+- Public Client 通常不依赖 `client_secret` 做前端安全保证
+
+### 7.2 完整流程
 
 #### 第 1 步：生成 `code_verifier`
 
-```
-App 生成一个 43-128 位的随机字符串：
-
-code_verifier = "random_code_verifier_string"
+```text
+code_verifier = 高熵随机字符串（43-128 字符）
 ```
 
-> ⚠️ **这个值只存在于 App 内存中，不会通过网络发送，属于机密信息。**
+#### 第 2 步：计算 `code_challenge`（S256）
 
----
-
-#### 第 2 步：计算 `code_challenge`
-
-```
-用 SHA256 哈希算法对 code_verifier 进行运算：
-
-code_challenge = SHA256(code_verifier)
-              = "code_challenge_sha256_string"
+```text
+code_challenge = BASE64URL(SHA256(code_verifier))
 ```
 
-> **关键：SHA256 是单向哈希函数，从 `code_challenge` 无法反推出 `code_verifier`。**
-> 这是 PKCE 安全性的数学基础。
-
-> **类比理解：**
->
-> SHA256 就像绞肉机——你可以把牛肉绞成肉馅，但绝对无法把肉馅还原成牛肉。`code_challenge` 是肉馅（公开），`code_verifier` 是原来的牛肉（私密）。
-
----
-
-#### 第 3 步：发起授权请求（携带 `code_challenge`）
+#### 第 3 步：发起授权请求
 
 ```http
-https://accounts.google.com/oauth/authorize?
+GET /authorize?
   response_type=code&
-  client_id=your_app_client_id&
+  client_id=your_client_id&
   redirect_uri=myapp://callback&
-  scope=openid&
-  code_challenge=code_challenge_sha256_string&    ← 新增
-  code_challenge_method=S256                      ← 新增（S256 = SHA256）
+  scope=openid profile&
+  code_challenge=<...>&
+  code_challenge_method=S256
 ```
 
-> `code_challenge` 会暴露在 URL 中，黑客可以看到，但 **没有任何用处** 。
+#### 第 4 步：用户同意后返回授权码
 
----
-
-#### 第 4 步：用户授权
-
-* 用户在 Google 页面登录并同意授权
-* Google 服务器 **记住这次请求的 `code_challenge`** ，并与授权码绑定
-
----
-
-#### 第 5 步：Google 返回授权码
-
-```
-Google 重定向回 App：
+```text
 myapp://callback?code=AUTH_CODE_12345
 ```
 
-> ⚠️ 授权码出现在 URL 中，黑客可能截获。但有了 PKCE，截获了也没用（下面解释）。
-
----
-
-#### 第 6 步：用授权码 + `code_verifier` 换 Token
+#### 第 5 步：用 `code + code_verifier` 换 token
 
 ```http
-POST https://oauth2.googleapis.com/token
+POST /token
+  grant_type=authorization_code
+  code=AUTH_CODE_12345
+  client_id=your_client_id
+  code_verifier=<original_verifier>
+```
 
-grant_type=authorization_code&
-code=AUTH_CODE_12345&
-client_id=your_app_client_id&
-code_verifier=random_code_verifier_string    ← 发送原始 code_verifier（非哈希值）
+#### 第 6 步：授权服务器校验
+
+```text
+BASE64URL(SHA256(code_verifier)) == 之前记录的 code_challenge ?
+  是 -> 发 token
+  否 -> 拒绝
 ```
 
 ---
 
-#### 第 7 步：Google 验证并返回 Token
+## 八、为什么 PKCE 能挡住截获攻击
 
-```
-Google 的验证逻辑：
+关键是信息分离：
 
-1. 取出之前存储的 code_challenge
-2. 计算 SHA256(code_verifier)
-3. 对比：SHA256(code_verifier) == code_challenge ？
-   ✅ 匹配 → 返回 Access Token 和 ID Token
-   ❌ 不匹配 → 拒绝请求
+- `code_challenge`：可见，但不可逆。
+- `code_verifier`：不出现在授权请求，不应暴露给拦截者。
+
+攻击者即使拿到授权码和 challenge，仍缺 verifier，无法完成兑换。
+
+---
+
+## 九、PKCE 在 SPA（单页应用）中的使用
+
+### 9.1 为什么 SPA 必须关注 PKCE
+
+SPA 运行在浏览器里，没有后端机密存储能力，本质上是 Public Client。
+
+### 9.2 历史做法与现状
+
+- 历史上很多 SPA 使用 Implicit Flow（直接在前端拿 token）。
+- 该流程暴露面更大，安全性与可控性较弱。
+- OAuth 2.1 已不再推荐/等效废弃 Implicit Flow，改为“授权码 + PKCE”。
+
+### 9.3 现代推荐
+
+SPA 使用 Authorization Code Flow with PKCE：
+
+1. 前端发起授权并带 PKCE 参数。
+2. 回调拿到 code。
+3. 通过 PKCE 完成 token 兑换。
+
+这样在不依赖前端保存 client_secret 的前提下，显著提升安全性。
+
+---
+
+## 十、PKCE vs 传统授权码流程
+
+| 对比项 | 传统授权码（依赖静态 secret） | 授权码 + PKCE |
+|--------|------------------------------|---------------|
+| 客户端证明 | 静态 `client_secret` | 动态 `code_verifier` |
+| 适配 Public Client | 弱 | 强 |
+| 抗授权码截获 | 有短板 | 显著增强 |
+| 实施复杂度 | 中 | 中（多一步 challenge/verifier） |
+
+---
+
+## 十一、OAuth 2.1 的方向
+
+OAuth 2.1 强化了“授权码 + PKCE”作为主流路径，进一步统一了客户端实践，减少历史不安全流程使用。
+
+---
+
+## 十二、总结
+
+```text
+1) 问题：Public Client 无法安全保管 client_secret
+2) 风险：授权码可能在前端回调链路被截获
+3) 解法：PKCE 用一次性 code_verifier/code_challenge 绑定 code 兑换
+4) 关键：强制 S256，避免 plain
+5) 实践：移动端与 SPA 都应采用授权码 + PKCE
 ```
 
 ---
 
-#### 第 8 步：授权成功，访问 Google Drive
+## 十三、延伸阅读
 
-App 拿到 Access Token，调用 Google Drive API 访问用户文件。
-
----
-
-### 完整时序图
-
-```
-用户          Android App              Google 授权服务器       Google Drive
- │                │                           │                    │
- │ 点击"连接Drive" │                           │                    │
- │────────────────▶│                           │                    │
- │                │ 生成 code_verifier         │                    │
- │                │ 计算 code_challenge        │                    │
- │                │                           │                    │
- │                │ 跳转授权页（携带 code_challenge）              │
- │                │──────────────────────────▶│                    │
- │                │                           │ 记住 code_challenge │
- │ 登录并同意授权  │                           │                    │
- │────────────────────────────────────────────▶                   │
- │                │                           │                    │
- │                │ 重定向回 App（携带 code）  │                    │
- │                │◀──────────────────────────│                    │
- │                │                           │                    │
- │                │ 发送 code + code_verifier  │                    │
- │                │──────────────────────────▶│                    │
- │                │                           │ 验证 SHA256(verifier)│
- │                │                           │ == code_challenge ? │
- │                │ 返回 Access Token          │                    │
- │                │◀──────────────────────────│                    │
- │                │                           │                    │
- │                │ 访问 Google Drive          │                    │
- │                │───────────────────────────────────────────────▶│
- │                │ 返回文件列表               │                    │
- │                │◀───────────────────────────────────────────────│
-```
-
----
-
-## 六、为什么 PKCE 能防住黑客？
-
-### 两段信息的分离是关键
-
-```
-┌─────────────────────────────────────────────────────────┐
-│                  PKCE 的安全设计                         │
-├──────────────────┬──────────────────────────────────────┤
-│  code_challenge  │  哈希值，通过 URL 传输，黑客可见       │
-│  （公开信息）    │  → 知道了也没用，无法反推原始值        │
-├──────────────────┼──────────────────────────────────────┤
-│  code_verifier   │  原始值，只存在于 App 内存中           │
-│  （机密信息）    │  → 黑客根本无法获取                    │
-└──────────────────┴──────────────────────────────────────┘
-```
-
-### 黑客截获了授权码，然后呢？
-
-```
-黑客拿到：
-  ✅ 授权码（code）        → 从 URL 截获
-  ✅ code_challenge        → 从 URL 截获
-  ❌ code_verifier         → 只在 App 内存里，根本拿不到
-
-黑客的尝试：
-  ❌ 用 code 直接换 Token  → 服务器要求提供 code_verifier，拒绝
-  ❌ 暴力猜测 code_verifier → 43-128 位随机字符串，几乎不可能
-  ❌ 从 code_challenge 反推 → SHA256 不可逆，数学上无法做到
-  
-结果：黑客无功而返 ✅
-```
-
----
-
-## 七、PKCE vs 传统授权码流程
-
-| 对比项                 | 传统授权码（可信客户端） | PKCE（不可信客户端）       |
-| ---------------------- | ------------------------ | -------------------------- |
-| **验证方式**     | 静态 `client_secret`   | 动态 `code_verifier`     |
-| **密钥存储位置** | 服务器（安全）           | App 内存（每次生成）       |
-| **是否可能泄露** | 不会（服务器保护）       | 不会（内存中，不写入代码） |
-| **防截获能力**   | 依赖 secret 保密         | 依赖哈希不可逆性           |
-| **适用客户端**   | 服务器端 Web 应用        | 移动 App、SPA、桌面应用    |
-
----
-
-## 八、OAuth 2.1 的最新动向
-
-> 在最新的 **OAuth 2.1 规范**中，PKCE 已成为 **所有客户端类型的强制要求** ，不再区分可信和不可信客户端。
-
-**原因：**
-
-1. PKCE 为授权码流程提供了额外的安全层
-2. 统一了可信与不可信客户端的实现方式
-3. 即使是服务器端应用，使用 PKCE 也更安全（双重保险）
-
----
-
-## 九、总结
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                      PKCE 核心要点                          │
-├─────────────────────────────────────────────────────────────┤
-│ 1. 问题根源                                                 │
-│    不可信客户端（移动/SPA）无法安全保管 client_secret        │
-│                                                             │
-│ 2. PKCE 解法                                                │
-│    用动态一次性的 code_verifier 替代静态 client_secret       │
-│                                                             │
-│ 3. 安全原理                                                 │
-│    code_challenge（公开）= SHA256(code_verifier)            │
-│    code_verifier（私密）只存内存，网络上从不出现             │
-│    单向哈希不可逆 → 知道 challenge 也推不出 verifier         │
-│                                                             │
-│ 4. 防攻击效果                                               │
-│    黑客截获授权码 → 无 code_verifier → 换不了 Token ✅      │
-│                                                             │
-│ 5. 发展趋势                                                 │
-│    OAuth 2.1 已将 PKCE 设为所有客户端的强制要求              │
-└─────────────────────────────────────────────────────────────┘
-```
-
----
-
-## 十、延伸阅读
-
-* **前置知识：** 认证与授权的区别、OAuth 2.0 授权框架、OIDC
-* **相关概念：** OAuth 2.1 规范、移动端安全最佳实践
+- 前置：认证与授权、OAuth 2.0、OIDC
+- 进阶：OAuth 2.1、移动端回调安全（Universal Links/App Links）、Token 存储与轮换策略
