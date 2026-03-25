@@ -1,20 +1,17 @@
-#include <bits/stdc++.h>
+#include<bits/stdc++.h>
 using namespace std;
-
 int main() {
-    string s;
-    cin >> s;
+	int boy=0,girl=0;
+	string st;
+	cin>>st;
+	for(int i=0;i<=st.length();i++){
 
-    // 统计各字母出现次数
-    int cnt[26] = {0};
-    for (char c : s) {
-        if (c != '.') cnt[c - 'a']++;
-    }
-
-    int boy  = max({cnt['b'-'a'], cnt['o'-'a'], cnt['y'-'a']});
-    int girl = max({cnt['g'-'a'], cnt['i'-'a'], cnt['r'-'a'], cnt['l'-'a']});
-
-    cout << boy  << "\n";
-    cout << girl << "\n";
-    return 0;
+		if (st[i]=='b'||st[i+1]=='o'||st[i+2]=='y')
+			boy++;
+		if (st[i]=='g'||st[i+1]=='i'||st[i+2]=='r'||st[i+3]=='l')
+			girl++;
+	}
+	cout<< boy <<endl;
+	cout<< girl <<endl;
+	return 0;
 }
