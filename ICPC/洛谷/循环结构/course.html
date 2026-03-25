@@ -1,0 +1,1506 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>循环结构算法课程 · 洛谷题解精讲</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400;1,9..40,500&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --color-bg: #FAF7F2;
+  --color-bg-warm: #F5F0E8;
+  --color-bg-code: #1E1E2E;
+  --color-text: #2C2A28;
+  --color-text-secondary: #6B6560;
+  --color-text-muted: #9E9790;
+  --color-border: #E5DFD6;
+  --color-border-light: #EEEBE5;
+  --color-surface: #FFFFFF;
+  --color-surface-warm: #FDF9F3;
+  --color-accent: #D94F30;
+  --color-accent-hover: #C4432A;
+  --color-accent-light: #FDEEE9;
+  --color-accent-muted: #E8836C;
+  --color-success: #2D8B55;
+  --color-success-light: #E8F5EE;
+  --color-error: #C93B3B;
+  --color-error-light: #FDE8E8;
+  --color-info: #2A7B9B;
+  --color-info-light: #E4F2F7;
+  --color-actor-1: #D94F30;
+  --color-actor-2: #2A7B9B;
+  --color-actor-3: #7B6DAA;
+  --color-actor-4: #D4A843;
+  --color-actor-5: #2D8B55;
+  --font-display: 'Bricolage Grotesque', Georgia, serif;
+  --font-body: 'DM Sans', -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 1.875rem;
+  --text-4xl: 2.25rem;
+  --text-5xl: 3rem;
+  --text-6xl: 3.75rem;
+  --leading-tight: 1.15;
+  --leading-snug: 1.3;
+  --leading-normal: 1.6;
+  --space-1: 0.25rem; --space-2: 0.5rem; --space-3: 0.75rem;
+  --space-4: 1rem; --space-5: 1.25rem; --space-6: 1.5rem;
+  --space-8: 2rem; --space-10: 2.5rem; --space-12: 3rem;
+  --space-16: 4rem; --space-20: 5rem;
+  --content-width: 820px;
+  --content-width-wide: 1020px;
+  --nav-height: 52px;
+  --radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px; --radius-full: 9999px;
+  --shadow-sm: 0 1px 2px rgba(44,42,40,0.05);
+  --shadow-md: 0 4px 12px rgba(44,42,40,0.08);
+  --shadow-lg: 0 8px 24px rgba(44,42,40,0.1);
+  --ease-out: cubic-bezier(0.16,1,0.3,1);
+  --ease-in-out: cubic-bezier(0.65,0,0.35,1);
+  --duration-fast: 150ms; --duration-normal: 300ms; --duration-slow: 500ms;
+  --stagger-delay: 120ms;
+}
+*,*::before,*::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-snap-type: y proximity; scroll-behavior: smooth; }
+body {
+  font-family: var(--font-body);
+  color: var(--color-text);
+  background: var(--color-bg);
+  background-image: radial-gradient(ellipse at 20% 50%, rgba(217,79,48,0.03) 0%, transparent 50%);
+  line-height: var(--leading-normal);
+}
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: var(--radius-full); }
+pre, code { white-space: pre-wrap; word-break: break-word; overflow-x: hidden; font-family: var(--font-mono); }
+.translation-code::-webkit-scrollbar, pre::-webkit-scrollbar { display: none; }
+
+/* NAV */
+.nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  height: var(--nav-height);
+  background: rgba(250,247,242,0.92);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--color-border-light);
+}
+.progress-bar {
+  position: absolute; top: 0; left: 0; height: 3px;
+  background: var(--color-accent); width: 0;
+  transition: width 0.1s linear;
+}
+.nav-inner {
+  max-width: var(--content-width-wide);
+  margin: 0 auto; height: 100%;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 var(--space-6);
+}
+.nav-title { font-family: var(--font-display); font-weight: 700; font-size: var(--text-sm); color: var(--color-text); }
+.nav-dots { display: flex; gap: var(--space-2); align-items: center; }
+.nav-dot {
+  width: 10px; height: 10px; border-radius: var(--radius-full);
+  border: 2px solid var(--color-text-muted);
+  background: transparent; cursor: pointer;
+  transition: all var(--duration-normal) var(--ease-out);
+  position: relative;
+}
+.nav-dot:hover { border-color: var(--color-accent); }
+.nav-dot.active { border-color: var(--color-accent); background: var(--color-accent); box-shadow: 0 0 0 3px var(--color-accent-light); }
+.nav-dot.visited { background: var(--color-accent-muted); border-color: var(--color-accent-muted); }
+.nav-dot-label {
+  position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%);
+  background: var(--color-text); color: white; font-size: 11px; font-family: var(--font-body);
+  white-space: nowrap; padding: 3px 8px; border-radius: 4px; pointer-events: none;
+  opacity: 0; transition: opacity var(--duration-fast);
+}
+.nav-dot:hover .nav-dot-label { opacity: 1; }
+
+/* MODULES */
+.module {
+  min-height: 100dvh; min-height: 100vh;
+  scroll-snap-align: start;
+  padding: var(--space-16) var(--space-6);
+  padding-top: calc(var(--nav-height) + var(--space-12));
+}
+.module-content { max-width: var(--content-width); margin: 0 auto; }
+.module-content-wide { max-width: var(--content-width-wide); margin: 0 auto; }
+.module-header { margin-bottom: var(--space-12); }
+.module-number {
+  font-family: var(--font-display); font-weight: 800;
+  font-size: var(--text-6xl); color: var(--color-accent);
+  opacity: 0.15; line-height: 1; display: block; margin-bottom: var(--space-2);
+}
+.module-title {
+  font-family: var(--font-display); font-weight: 700;
+  font-size: var(--text-4xl); line-height: var(--leading-tight);
+  color: var(--color-text); margin-bottom: var(--space-3);
+}
+.module-subtitle {
+  font-size: var(--text-lg); color: var(--color-text-secondary);
+  line-height: var(--leading-snug);
+}
+.screen { margin-bottom: var(--space-16); }
+.screen-heading {
+  font-family: var(--font-display); font-weight: 600;
+  font-size: var(--text-2xl); margin-bottom: var(--space-6);
+  color: var(--color-text);
+}
+p { margin-bottom: var(--space-4); font-size: var(--text-base); line-height: var(--leading-normal); }
+
+/* ANIMATE IN */
+.animate-in {
+  opacity: 0; transform: translateY(20px);
+  transition: opacity var(--duration-slow) var(--ease-out), transform var(--duration-slow) var(--ease-out);
+}
+.animate-in.visible { opacity: 1; transform: translateY(0); }
+.stagger-children > .animate-in { transition-delay: calc(var(--stagger-index, 0) * var(--stagger-delay)); }
+
+/* TRANSLATION BLOCK */
+.translation-block {
+  display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2);
+  margin: var(--space-6) 0; border-radius: var(--radius-lg);
+  overflow: hidden; box-shadow: var(--shadow-lg);
+}
+.translation-code {
+  background: var(--color-bg-code); padding: var(--space-6);
+  font-size: var(--text-sm); line-height: 1.7; color: #CDD6F4;
+  overflow: visible;
+}
+.translation-english {
+  background: var(--color-surface); padding: var(--space-6);
+  font-size: var(--text-sm); line-height: 1.7; border-left: 1px solid var(--color-border);
+}
+.translation-header {
+  display: flex; gap: var(--space-2); margin-bottom: var(--space-6);
+  grid-column: 1 / -1; background: var(--color-bg-code);
+  padding: var(--space-3) var(--space-6);
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+.translation-label {
+  font-family: var(--font-mono); font-size: var(--text-xs);
+  letter-spacing: 0.08em; text-transform: uppercase;
+  padding: var(--space-1) var(--space-3); border-radius: var(--radius-full);
+}
+.translation-label.code { background: rgba(203,166,247,0.15); color: #CBA6F7; }
+.translation-label.english { background: rgba(166,227,161,0.15); color: #A6E3A1; }
+.en-line { display: flex; gap: var(--space-3); padding: var(--space-1) 0; color: var(--color-text-secondary); }
+.en-line-num { color: var(--color-accent); font-family: var(--font-mono); font-size: var(--text-xs); min-width: 20px; opacity: 0.6; }
+.en-line-text { flex: 1; }
+.code-keyword { color: #CBA6F7; }
+.code-string { color: #A6E3A1; }
+.code-function { color: #89B4FA; }
+.code-comment { color: #6C7086; }
+.code-number { color: #FAB387; }
+.code-property { color: #F9E2AF; }
+.code-operator { color: #94E2D5; }
+
+/* PATTERN CARDS */
+.pattern-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-4); margin: var(--space-6) 0; }
+.pattern-card {
+  background: var(--color-surface); border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg); padding: var(--space-6);
+  box-shadow: var(--shadow-sm);
+  transition: transform var(--duration-normal) var(--ease-out), box-shadow var(--duration-normal);
+}
+.pattern-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+.pattern-icon { font-size: 2rem; margin-bottom: var(--space-3); }
+.pattern-name { font-family: var(--font-display); font-weight: 700; font-size: var(--text-xl); margin-bottom: var(--space-2); }
+.pattern-desc { font-size: var(--text-sm); color: var(--color-text-secondary); line-height: 1.6; }
+.pattern-example { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--color-accent); margin-top: var(--space-3); background: var(--color-accent-light); padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm); }
+
+/* AHA BOX */
+.aha-box {
+  background: linear-gradient(135deg, var(--color-accent-light), #FFF5F2);
+  border-left: 4px solid var(--color-accent);
+  border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
+  padding: var(--space-5) var(--space-6);
+  margin: var(--space-8) 0;
+}
+.aha-label { font-family: var(--font-mono); font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.1em; color: var(--color-accent); margin-bottom: var(--space-2); font-weight: 600; }
+.aha-text { font-size: var(--text-base); font-weight: 500; line-height: var(--leading-snug); }
+
+/* INFO BOX */
+.info-box {
+  background: var(--color-info-light); border-left: 4px solid var(--color-info);
+  border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
+  padding: var(--space-5) var(--space-6); margin: var(--space-6) 0;
+}
+.info-label { font-family: var(--font-mono); font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.1em; color: var(--color-info); margin-bottom: var(--space-2); font-weight: 600; }
+
+/* FLOW STEPS */
+.flow-steps { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; margin: var(--space-6) 0; }
+.flow-step {
+  background: var(--color-surface); border: 2px solid var(--color-border);
+  border-radius: var(--radius-md); padding: var(--space-3) var(--space-5);
+  font-size: var(--text-sm); font-weight: 600; text-align: center; min-width: 80px;
+}
+.flow-step.highlight { border-color: var(--color-accent); background: var(--color-accent-light); color: var(--color-accent); }
+.flow-arrow { color: var(--color-text-muted); font-size: 1.25rem; }
+
+/* GROUP CHAT */
+.chat-window {
+  background: var(--color-bg-warm); border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border); overflow: hidden;
+  box-shadow: var(--shadow-lg); margin: var(--space-6) 0;
+}
+.chat-header {
+  background: var(--color-surface); padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--color-border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.chat-title { font-family: var(--font-display); font-weight: 700; font-size: var(--text-sm); }
+.chat-subtitle { font-size: var(--text-xs); color: var(--color-text-muted); }
+.chat-messages { padding: var(--space-5); min-height: 280px; display: flex; flex-direction: column; gap: var(--space-3); }
+.chat-msg { display: flex; gap: var(--space-3); max-width: 85%; opacity: 0; transform: translateY(8px); transition: opacity 0.35s ease-out, transform 0.35s ease-out; }
+.chat-msg.show { opacity: 1; transform: translateY(0); }
+.chat-msg.right { align-self: flex-end; flex-direction: row-reverse; }
+.chat-avatar {
+  width: 32px; height: 32px; border-radius: var(--radius-full);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.85rem; flex-shrink: 0; font-weight: 700; color: white;
+}
+.avatar-checker { background: var(--color-actor-2); }
+.avatar-body { background: var(--color-actor-1); }
+.bubble {
+  padding: var(--space-3) var(--space-4); border-radius: var(--radius-md);
+  font-size: var(--text-sm); line-height: 1.5;
+}
+.bubble-checker { background: var(--color-info-light); border-bottom-left-radius: 4px; }
+.bubble-body { background: var(--color-accent-light); border-bottom-right-radius: 4px; }
+.bubble-mono { font-family: var(--font-mono); font-size: var(--text-xs); }
+.chat-name { font-size: var(--text-xs); color: var(--color-text-muted); margin-bottom: 2px; }
+.chat-controls { padding: var(--space-4) var(--space-5); border-top: 1px solid var(--color-border); display: flex; gap: var(--space-3); background: var(--color-surface); }
+.btn { padding: var(--space-2) var(--space-5); border-radius: var(--radius-full); font-family: var(--font-body); font-size: var(--text-sm); font-weight: 600; cursor: pointer; border: 2px solid transparent; transition: all var(--duration-fast); }
+.btn-primary { background: var(--color-accent); color: white; }
+.btn-primary:hover { background: var(--color-accent-hover); }
+.btn-outline { background: transparent; border-color: var(--color-border); color: var(--color-text-secondary); }
+.btn-outline:hover { border-color: var(--color-text-muted); }
+
+/* DIGIT FLOW */
+.digit-flow { background: var(--color-bg-code); border-radius: var(--radius-lg); padding: var(--space-8); margin: var(--space-6) 0; box-shadow: var(--shadow-lg); }
+.digit-display { display: flex; justify-content: center; gap: var(--space-2); margin-bottom: var(--space-6); flex-wrap: wrap; }
+.digit-box {
+  width: 56px; height: 56px; border-radius: var(--radius-md);
+  border: 2px solid rgba(255,255,255,0.1);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-mono); font-size: var(--text-2xl); font-weight: 700;
+  color: #CDD6F4; transition: all 0.4s ease-out;
+}
+.digit-box.active { border-color: var(--color-actor-4); background: rgba(212,168,67,0.15); color: var(--color-actor-4); transform: scale(1.1); }
+.digit-box.done { border-color: rgba(255,255,255,0.05); color: rgba(205,214,244,0.2); }
+.digit-step-info { text-align: center; }
+.digit-operation { font-family: var(--font-mono); font-size: var(--text-lg); color: #A6E3A1; margin-bottom: var(--space-2); min-height: 28px; }
+.digit-result { font-size: var(--text-sm); color: rgba(205,214,244,0.6); }
+.digit-counter { font-size: var(--text-3xl); font-weight: 800; color: var(--color-actor-1); font-family: var(--font-display); margin-top: var(--space-4); text-align: center; }
+.digit-counter-label { font-size: var(--text-xs); color: rgba(205,214,244,0.4); font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.1em; text-align: center; }
+
+/* QUIZ */
+.quiz-block { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-md); margin: var(--space-6) 0; }
+.quiz-header { padding: var(--space-5) var(--space-6); border-bottom: 1px solid var(--color-border); display: flex; align-items: center; gap: var(--space-3); }
+.quiz-badge { background: var(--color-accent); color: white; font-family: var(--font-mono); font-size: var(--text-xs); padding: var(--space-1) var(--space-3); border-radius: var(--radius-full); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+.quiz-title { font-family: var(--font-display); font-weight: 700; font-size: var(--text-xl); }
+.quiz-body { padding: var(--space-6); }
+.quiz-question { background: var(--color-bg); border-radius: var(--radius-md); padding: var(--space-5); margin-bottom: var(--space-5); border: 1px solid var(--color-border-light); }
+.quiz-q-num { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--color-accent); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: var(--space-2); }
+.quiz-q-text { font-weight: 600; margin-bottom: var(--space-4); line-height: var(--leading-snug); }
+.quiz-code-snippet { background: var(--color-bg-code); color: #CDD6F4; font-family: var(--font-mono); font-size: var(--text-xs); padding: var(--space-3) var(--space-4); border-radius: var(--radius-sm); margin-bottom: var(--space-4); line-height: 1.7; }
+.quiz-options { display: flex; flex-direction: column; gap: var(--space-2); }
+.quiz-option {
+  padding: var(--space-3) var(--space-4); border-radius: var(--radius-sm);
+  border: 2px solid var(--color-border); cursor: pointer;
+  font-size: var(--text-sm); transition: all var(--duration-fast);
+  background: var(--color-surface);
+}
+.quiz-option:hover:not(.locked) { border-color: var(--color-accent); background: var(--color-accent-light); }
+.quiz-option.correct { border-color: var(--color-success); background: var(--color-success-light); color: var(--color-success); }
+.quiz-option.wrong { border-color: var(--color-error); background: var(--color-error-light); color: var(--color-error); }
+.quiz-feedback { font-size: var(--text-sm); padding: var(--space-3) var(--space-4); border-radius: var(--radius-sm); margin-top: var(--space-3); line-height: 1.6; display: none; }
+.quiz-feedback.show { display: block; }
+.quiz-feedback.correct { background: var(--color-success-light); color: var(--color-success); }
+.quiz-feedback.wrong { background: var(--color-error-light); color: var(--color-error); }
+
+/* TOOLTIP */
+.tt {
+  border-bottom: 1.5px dashed var(--color-accent-muted);
+  cursor: pointer; color: inherit;
+}
+#tt-popup {
+  position: fixed; z-index: 9999;
+  background: var(--color-text); color: white;
+  font-family: var(--font-body); font-size: var(--text-sm);
+  padding: var(--space-3) var(--space-4); border-radius: var(--radius-md);
+  max-width: 280px; line-height: 1.5; pointer-events: none;
+  box-shadow: var(--shadow-lg); display: none;
+}
+
+/* ARCHITECTURE DIAGRAM */
+.arch-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-4); margin: var(--space-6) 0; }
+.arch-card {
+  background: var(--color-surface); border: 1px solid var(--color-border);
+  border-radius: var(--radius-md); padding: var(--space-5);
+  border-top: 3px solid var(--color-accent);
+}
+.arch-card:nth-child(2) { border-top-color: var(--color-actor-2); }
+.arch-card:nth-child(3) { border-top-color: var(--color-actor-3); }
+.arch-card:nth-child(4) { border-top-color: var(--color-actor-4); }
+.arch-card:nth-child(5) { border-top-color: var(--color-actor-5); }
+.arch-card:nth-child(6) { border-top-color: var(--color-actor-1); }
+.arch-card-name { font-family: var(--font-display); font-weight: 700; font-size: var(--text-base); margin-bottom: var(--space-3); }
+.arch-problems { display: flex; flex-wrap: wrap; gap: var(--space-1); }
+.arch-tag { background: var(--color-bg); border: 1px solid var(--color-border-light); font-family: var(--font-mono); font-size: var(--text-xs); padding: 2px var(--space-2); border-radius: var(--radius-sm); color: var(--color-text-secondary); }
+
+/* DIVIDER */
+.divider { border: none; border-top: 1px solid var(--color-border); margin: var(--space-12) 0; }
+
+/* RESPONSIVE */
+@media (max-width: 768px) {
+  :root { --text-4xl: 1.875rem; --text-5xl: 2.25rem; --text-6xl: 3rem; }
+  .translation-block { grid-template-columns: 1fr; }
+  .pattern-cards { grid-template-columns: 1fr 1fr; }
+  .arch-grid { grid-template-columns: 1fr 1fr; }
+  .flow-steps { justify-content: center; }
+}
+@media (max-width: 480px) {
+  :root { --text-4xl: 1.5rem; }
+  .module { padding: var(--space-8) var(--space-4); padding-top: calc(var(--nav-height) + var(--space-8)); }
+  .pattern-cards { grid-template-columns: 1fr; }
+  .arch-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- TOOLTIP POPUP -->
+<div id="tt-popup"></div>
+
+<!-- NAV -->
+<nav class="nav">
+  <div class="progress-bar" id="progressBar"></div>
+  <div class="nav-inner">
+    <span class="nav-title">循环结构 · 洛谷精讲</span>
+    <div class="nav-dots" id="navDots">
+      <button class="nav-dot" data-target="m1"><span class="nav-dot-label">什么是循环？</span></button>
+      <button class="nav-dot" data-target="m2"><span class="nav-dot-label">for循环三模式</span></button>
+      <button class="nav-dot" data-target="m3"><span class="nav-dot-label">while循环</span></button>
+      <button class="nav-dot" data-target="m4"><span class="nav-dot-label">嵌套循环</span></button>
+      <button class="nav-dot" data-target="m5"><span class="nav-dot-label">数字手术</span></button>
+      <button class="nav-dot" data-target="m6"><span class="nav-dot-label">模拟与全局</span></button>
+    </div>
+  </div>
+</nav>
+
+<!-- ==================== MODULE 1 ==================== -->
+<section class="module" id="m1" style="background:var(--color-bg)">
+<div class="module-content">
+
+<header class="module-header animate-in">
+  <span class="module-number">01</span>
+  <h1 class="module-title">什么是循环？</h1>
+  <p class="module-subtitle">从最简单的问题出发，理解程序为什么需要重复做事</p>
+</header>
+
+<section class="screen animate-in">
+  <h2 class="screen-heading">你好，竞赛编程</h2>
+  <p>这 20 道题来自 <span class="tt" data-tip="洛谷是中国最大的算法竞赛题目平台，就像一个有成千上万道数学谜题的在线图书馆，旁边坐着一位自动改卷的裁判。">洛谷</span>，全都属于同一个主题——<strong>循环结构</strong>。它们是学习 <span class="tt" data-tip="C++ 是一种运行速度极快的编程语言，是大多数算法竞赛的首选语言。">C++</span> 算法绕不开的第一关。</p>
+  <p>所谓循环，就是让计算机把同一件事重复做很多次。听起来简单，但用好它能解决大量看似复杂的问题。</p>
+
+  <div class="flow-steps">
+    <div class="flow-step highlight">读入数据</div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-step">重复处理<br><small style="font-size:0.75em;color:var(--color-text-muted)">（循环）</small></div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-step">输出答案</div>
+  </div>
+
+  <div class="info-box">
+    <div class="info-label">📌 这套课程的用法</div>
+    <p style="margin:0;font-size:var(--text-sm)">每个模块介绍一类循环思维，配有真实代码对照、动画演示和思考题。你不需要记住每一行代码，只需要读懂背后的逻辑。</p>
+  </div>
+</section>
+
+<section class="screen animate-in">
+  <h2 class="screen-heading">最简单的循环：求和</h2>
+  <p>先看最基础的一道题：计算 <code>1 + 2 + 3 + ... + n</code> 的值。</p>
+  <p>手算的话，你会从 1 开始，一个一个往上加。程序也是这么做的，只不过它可以在一秒内加完一亿次。</p>
+
+  <div class="translation-block animate-in">
+    <div class="translation-header">
+      <span class="translation-label code">C++ 代码</span>
+      <span class="translation-label english">逐行解释</span>
+    </div>
+    <div class="translation-code"><span class="code-keyword">#include</span> <span class="code-string">&lt;iostream&gt;</span>
+<span class="code-keyword">using namespace</span> std;
+
+<span class="code-keyword">int</span> <span class="code-function">main</span>() {
+    <span class="code-keyword">int</span> n;
+    cin >> n;
+    <span class="code-keyword">int</span> sum = <span class="code-number">0</span>;
+    <span class="code-keyword">for</span> (<span class="code-keyword">int</span> i = <span class="code-number">1</span>; i <= n; i++) {
+        sum += i;
+    }
+    cout << sum << <span class="code-string">"\n"</span>;
+    <span class="code-keyword">return</span> <span class="code-number">0</span>;
+}</div>
+    <div class="translation-english">
+      <div class="en-line"><span class="en-line-num">1</span><span class="en-line-text">引入"输入输出"工具箱</span></div>
+      <div class="en-line"><span class="en-line-num">2</span><span class="en-line-text">省略每次都要写的命名空间前缀</span></div>
+      <div class="en-line"><span class="en-line-num">4</span><span class="en-line-text">程序的主入口，从这里开始运行</span></div>
+      <div class="en-line"><span class="en-line-num">5</span><span class="en-line-text">声明一个<span class="tt" data-tip="变量就是一个有名字的盒子，用来存储数字或文字。int 表示存整数。">整数变量</span> n，用来装输入</span></div>
+      <div class="en-line"><span class="en-line-num">6</span><span class="en-line-text">从键盘读入 n 的值</span></div>
+      <div class="en-line"><span class="en-line-num">7</span><span class="en-line-text">sum 从 0 开始，准备累加</span></div>
+      <div class="en-line"><span class="en-line-num">8</span><span class="en-line-text">循环：i 从 1 增到 n，每次加 1</span></div>
+      <div class="en-line"><span class="en-line-num">9</span><span class="en-line-text">每轮把 i 加进 sum（相当于 sum = sum + i）</span></div>
+      <div class="en-line"><span class="en-line-num">11</span><span class="en-line-text">把最终结果输出到屏幕</span></div>
+    </div>
+  </div>
+
+  <div class="aha-box animate-in">
+    <div class="aha-label">💡 关键洞察</div>
+    <div class="aha-text">for 循环的三个部件：<strong>初始值</strong>（i=1）、<strong>终止条件</strong>（i≤n）、<strong>每步变化</strong>（i++）。这三个你掌握了，就掌握了 for 循环的一切。</div>
+  </div>
+</section>
+
+<section class="screen animate-in">
+  <h2 class="screen-heading">循环是怎么跑的？</h2>
+  <p>假设 n=5，程序内部会发生什么：</p>
+
+  <div style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-lg);overflow:hidden;box-shadow:var(--shadow-md)">
+    <table style="width:100%;border-collapse:collapse;font-family:var(--font-mono);font-size:var(--text-sm)">
+      <thead>
+        <tr style="background:var(--color-bg-code);color:#CDD6F4">
+          <th style="padding:var(--space-3) var(--space-5);text-align:left;font-weight:500">轮次</th>
+          <th style="padding:var(--space-3) var(--space-5);text-align:left;font-weight:500">i 的值</th>
+          <th style="padding:var(--space-3) var(--space-5);text-align:left;font-weight:500">执行 sum += i</th>
+          <th style="padding:var(--space-3) var(--space-5);text-align:left;font-weight:500">sum 变为</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="border-top:1px solid var(--color-border)"><td style="padding:var(--space-3) var(--space-5)">第1轮</td><td style="padding:var(--space-3) var(--space-5)">1</td><td style="padding:var(--space-3) var(--space-5)">0 + 1</td><td style="padding:var(--space-3) var(--space-5);color:var(--color-accent);font-weight:700">1</td></tr>
+        <tr style="border-top:1px solid var(--color-border);background:var(--color-bg)"><td style="padding:var(--space-3) var(--space-5)">第2轮</td><td style="padding:var(--space-3) var(--space-5)">2</td><td style="padding:var(--space-3) var(--space-5)">1 + 2</td><td style="padding:var(--space-3) var(--space-5);color:var(--color-accent);font-weight:700">3</td></tr>
+        <tr style="border-top:1px solid var(--color-border)"><td style="padding:var(--space-3) var(--space-5)">第3轮</td><td style="padding:var(--space-3) var(--space-5)">3</td><td style="padding:var(--space-3) var(--space-5)">3 + 3</td><td style="padding:var(--space-3) var(--space-5);color:var(--color-accent);font-weight:700">6</td></tr>
+        <tr style="border-top:1px solid var(--color-border);background:var(--color-bg)"><td style="padding:var(--space-3) var(--space-5)">第4轮</td><td style="padding:var(--space-3) var(--space-5)">4</td><td style="padding:var(--space-3) var(--space-5)">6 + 4</td><td style="padding:var(--space-3) var(--space-5);color:var(--color-accent);font-weight:700">10</td></tr>
+        <tr style="border-top:1px solid var(--color-border)"><td style="padding:var(--space-3) var(--space-5)">第5轮</td><td style="padding:var(--space-3) var(--space-5)">5</td><td style="padding:var(--space-3) var(--space-5)">10 + 5</td><td style="padding:var(--space-3) var(--space-5);color:var(--color-success);font-weight:700">15 ✓</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- QUIZ 1 -->
+<section class="screen animate-in">
+  <div class="quiz-block">
+    <div class="quiz-header">
+      <span class="quiz-badge">测验</span>
+      <span class="quiz-title">模块 1 · 理解循环</span>
+    </div>
+    <div class="quiz-body">
+
+      <div class="quiz-question">
+        <div class="quiz-q-num">问题 1</div>
+        <div class="quiz-q-text">如果要计算 1×2×3×...×n（阶乘），需要对 <code>求和.cpp</code> 改动哪里？</div>
+        <div class="quiz-options" data-correct="b">
+          <div class="quiz-option" data-val="a">把 <code>for</code> 改成 <code>while</code></div>
+          <div class="quiz-option" data-val="b">把 <code>sum = 0</code> 改成 <code>sum = 1</code>，把 <code>sum += i</code> 改成 <code>sum *= i</code></div>
+          <div class="quiz-option" data-val="c">把 <code>i <= n</code> 改成 <code>i < n</code></div>
+          <div class="quiz-option" data-val="d">不需要改，循环本身已经能计算阶乘了</div>
+        </div>
+        <div class="quiz-feedback correct">✓ 正是！乘法的初始值必须是 1（不是 0），而且每步是 <code>*=</code> 而不是 <code>+=</code>。<strong>初始值</strong>和<strong>操作符</strong>是区分"求和"与"求积"的关键。</div>
+        <div class="quiz-feedback wrong">再想想——加法和乘法在循环体里的区别是什么？乘法的"零"元素是什么？</div>
+      </div>
+
+      <div class="quiz-question">
+        <div class="quiz-q-num">问题 2</div>
+        <div class="quiz-q-text">下面代码会输出什么？</div>
+        <div class="quiz-code-snippet">int sum = 0;
+for (int i = 1; i &lt;= 5; i += 2) {
+    sum += i;
+}
+cout &lt;&lt; sum;</div>
+        <div class="quiz-options" data-correct="c">
+          <div class="quiz-option" data-val="a">15</div>
+          <div class="quiz-option" data-val="b">6</div>
+          <div class="quiz-option" data-val="c">9（1+3+5）</div>
+          <div class="quiz-option" data-val="d">10</div>
+        </div>
+        <div class="quiz-feedback correct">✓ 对！<code>i += 2</code> 意味着每次跳两步：i = 1, 3, 5，加起来是 9。步长不一定是 1，这让循环非常灵活。</div>
+        <div class="quiz-feedback wrong">注意 <code>i += 2</code>，i 不是每次加 1，而是每次加 2。走一遍：i=1, i=3, i=5, i=7（超过5停止）。</div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+</div>
+</section>
+
+<!-- ==================== MODULE 2 ==================== -->
+<section class="module" id="m2" style="background:var(--color-bg-warm)">
+<div class="module-content">
+
+<header class="module-header animate-in">
+  <span class="module-number">02</span>
+  <h1 class="module-title">for 循环的三大模式</h1>
+  <p class="module-subtitle">积累、追踪、筛选——所有 for 循环本质上都是这三种之一</p>
+</header>
+
+<section class="screen animate-in">
+  <h2 class="screen-heading">不只是求和</h2>
+  <p>for 循环能做的远不止累加数字。洛谷这批题里，for 循环被用来做三件不同的事情：</p>
+
+  <div class="pattern-cards stagger-children">
+    <div class="pattern-card animate-in">
+      <div class="pattern-icon">➕</div>
+      <div class="pattern-name">积累模式</div>
+      <div class="pattern-desc">每轮把某个值加进"罐子"里，最后罐子里就是答案。</div>
+      <div class="pattern-example">求和、打分（去掉最高最低后求均值）</div>
+    </div>
+    <div class="pattern-card animate-in">
+      <div class="pattern-icon">🎯</div>
+      <div class="pattern-name">追踪模式</div>
+      <div class="pattern-desc">边扫描边更新一个"当前最优"，循环结束时它就是答案。</div>
+      <div class="pattern-example">找最小值、找最大值、极差</div>
+    </div>
+    <div class="pattern-card animate-in">
+      <div class="pattern-icon">🔀</div>
+      <div class="pattern-name">筛选模式</div>
+      <div class="pattern-desc">根据条件把元素分成不同组，分别处理。</div>
+      <div class="pattern-example">分类平均（能被k整除/不能被k整除）</div>
+    </div>
+  </div>
+</section>
+
+<section class="screen animate-in">
+  <h2 class="screen-heading">追踪模式：找最小值</h2>
+  <p>关键思路：先假设一个"很大的数"作为初始最小值，然后扫描每个元素，遇到更小的就更新。</p>
+  <p>这个"很大的数"叫做 <span class="tt" data-tip="哨兵值是一个不可能出现在真实数据里的特殊值，用来初始化追踪变量。就像比赛开始前裁判先举着一个虚构的最低分。">哨兵值</span>，代码里写的是 <code>1e9</code>（即十亿）。</p>
+
+  <div class="translation-block animate-in">
+    <div class="translation-header">
+      <span class="translation-label code">找最小值.cpp</span>
+      <span class="translation-label english">逐行解释</span>
+    </div>
+    <div class="translation-code"><span class="code-keyword">int</span> n;
+cin >> n;
+
+<span class="code-keyword">int</span> min_val = <span class="code-number">1e9</span>;  <span class="code-comment">// 初始设一个很大的数</span>
+<span class="code-keyword">for</span> (<span class="code-keyword">int</span> i = <span class="code-number">0</span>; i < n; i++) {
+    <span class="code-keyword">int</span> x;
+    cin >> x;
+    <span class="code-keyword">if</span> (x < min_val) min_val = x;
+}
+
+cout << min_val << <span class="code-string">"\n"</span>;</div>
+    <div class="translation-english">
+      <div class="en-line"><span class="en-line-num">1</span><span class="en-line-text">读入要处理的数字个数 n</span></div>
+      <div class="en-line"><span class="en-line-num">4</span><span class="en-line-text">把"当前最小"初始化为十亿——比任何输入都大</span></div>
+      <div class="en-line"><span class="en-line-num">5</span><span class="en-line-text">遍历 n 个数（i 只是轮次计数器）</span></div>
+      <div class="en-line"><span class="en-line-num">6-7</span><span class="en-line-text">每轮读入一个新数 x</span></div>
+      <div class="en-line"><span class="en-line-num">8</span><span class="en-line-text">如果 x 比当前记录更小，就更新记录</span></div>
+      <div class="en-line"><span class="en-line-num">11</span><span class="en-line-text">所有数扫完，min_val 就是最终最小值</span></div>
+    </div>
+  </div>
+
+  <div class="aha-box">
+    <div class="aha-label">💡 关键洞察</div>
+    <div class="aha-text">追踪模式的本质是一场"擂台赛"——每个选手都来挑战当前冠军，只有打败冠军才能换人。扫描结束，冠军就是最终赢家。</div>
+  </div>
+</section>
+
+<section class="screen animate-in">
+  <h2 class="screen-heading">筛选模式：分类平均</h2>
+  <p>把 1 到 n 里的数字分成两组：能被 k <span class="tt" data-tip="模运算（%）求除法的余数。比如 7 % 3 = 1，因为 7 = 3×2 + 1。能被 k 整除意味着余数为 0。">整除</span>的 和 不能被 k 整除的，分别求平均值。</p>
+
+  <div class="translation-block animate-in">
+    <div class="translation-header">
+      <span class="translation-label code">分类平均.cpp</span>
+      <span class="translation-label english">逐行解释</span>
+    </div>
+    <div class="translation-code"><span class="code-keyword">int</span> sumA = <span class="code-number">0</span>, cntA = <span class="code-number">0</span>;
+<span class="code-keyword">int</span> sumB = <span class="code-number">0</span>, cntB = <span class="code-number">0</span>;
+
+<span class="code-keyword">for</span> (<span class="code-keyword">int</span> i = <span class="code-number">1</span>; i <= n; i++) {
+    <span class="code-keyword">if</span> (i % k == <span class="code-number">0</span>) {
+        cntA++;
+        sumA += i;
+    } <span class="code-keyword">else</span> {
+        cntB++;
+        sumB += i;
+    }
+}
+
+<span class="code-function">printf</span>(<span class="code-string">"%.1f %.1f\n"</span>, (<span class="code-keyword">double</span>)sumA/cntA, (<span class="code-keyword">double</span>)sumB/cntB);</div>
+    <div class="translation-english">
+      <div class="en-line"><span class="en-line-num">1-2</span><span class="en-line-text">A 组（整除）和 B 组（不整除）各自的总和与计数</span></div>
+      <div class="en-line"><span class="en-line-num">4</span><span class="en-line-text">遍历 1 到 n 的每个整数</span></div>
+      <div class="en-line"><span class="en-line-num">5</span><span class="en-line-text">i % k == 0 判断 i 能否被 k 整除</span></div>
+      <div class="en-line"><span class="en-line-num">6-7</span><span class="en-line-text">是：A 组计数+1，A 组总和加 i</span></div>
+      <div class="en-line"><span class="en-line-num">9-10</span><span class="en-line-text">否：B 组计数+1，B 组总和加 i</span></div>
+      <div class="en-line"><span class="en-line-num">14</span><span class="en-line-text">输出两组的平均值，保留一位小数</span></div>
+    </div>
+  </div>
+
+  <div class="info-box">
+    <div class="info-label">📐 筛选模式的通式</div>
+    <p style="margin:0;font-size:var(--text-sm)">同一个循环里，用 <code>if / else</code> 把元素"分拨"到不同的组，每组维护自己的计数器和求和器。这在处理分组统计问题时极为常用。</p>
+  </div>
+</section>
+
+<!-- QUIZ 2 -->
+<section class="screen animate-in">
+  <div class="quiz-block">
+    <div class="quiz-header">
+      <span class="quiz-badge">测验</span>
+      <span class="quiz-title">模块 2 · 识别模式</span>
+    </div>
+    <div class="quiz-body">
+
+      <div class="quiz-question">
+        <div class="quiz-q-num">问题 1</div>
+        <div class="quiz-q-text">你要统计一批学生成绩中，90分以上有多少人，90分以下有多少人。这用的是哪种模式？</div>
+        <div class="quiz-options" data-correct="c">
+          <div class="quiz-option" data-val="a">积累模式</div>
+          <div class="quiz-option" data-val="b">追踪模式</div>
+          <div class="quiz-option" data-val="c">筛选模式（按条件分组）</div>
+          <div class="quiz-option" data-val="d">需要嵌套循环</div>
+        </div>
+        <div class="quiz-feedback correct">✓ 对！根据"是否 >= 90"把学生分进两组，分别计数——这正是筛选模式。</div>
+        <div class="quiz-feedback wrong">想想：你需要按某个条件把数据"分开处理"，这对应哪种模式？</div>
+      </div>
+
+      <div class="quiz-question">
+        <div class="quiz-q-num">问题 2</div>
+        <div class="quiz-q-text">找最小值的代码里，如果把 <code>min_val = 1e9</code> 改成 <code>min_val = 0</code>，会出什么问题？</div>
+        <div class="quiz-options" data-correct="b">
+          <div class="quiz-option" data-val="a">没有问题，结果一样</div>
+          <div class="quiz-option" data-val="b">如果所有输入都是正数，答案会永远是 0（因为 0 比所有正数都小，永远不会被更新）</div>
+          <div class="quiz-option" data-val="c">程序会崩溃</div>
+          <div class="quiz-option" data-val="d">只有当最小值本身是 0 时才有问题</div>
+        </div>
+        <div class="quiz-feedback correct">✓ 正是！哨兵值必须是"不可能出现的最差值"。如果初始值比真实最小值还小，它就永远不会被真实数据替换掉。</div>
+        <div class="quiz-feedback wrong">哨兵值的意义是：让它在第一轮就被真实数据击败。如果哨兵本身比真实数据还小，会怎样？</div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+</div>
+</section>
+
+<!-- ==================== MODULE 3 ==================== -->
+<section class="module" id="m3" style="background:var(--color-bg)">
+<div class="module-content">
+
+<header class="module-header animate-in">
+  <span class="module-number">03</span>
+  <h1 class="module-title">while 循环：什么时候停？</h1>
+  <p class="module-subtitle">当你不知道要循环多少次，只知道什么时候应该停下来</p>
+</header>
+
+<section class="screen animate-in">
+  <h2 class="screen-heading">for 和 while 的区别</h2>
+  <p><strong>for 循环</strong>适合"已知要重复几次"的场景——比如处理 n 个数字，就循环 n 次。</p>
+  <p><strong>while 循环</strong>适合"重复到某个条件满足为止"的场景——循环次数事先不确定。</p>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-4);margin:var(--space-6) 0">
+    <div style="background:var(--color-surface);border:2px solid var(--color-border);border-radius:var(--radius-lg);padding:var(--space-6)">
+      <div style="font-family:var(--font-display);font-weight:700;font-size:var(--text-lg);margin-bottom:var(--space-3);color:var(--color-actor-2)">for 循环</div>
+      <p style="font-size:var(--text-sm);margin-bottom:var(--space-3)">像倒计时闹钟：定好响几次，响完就停。</p>
+      <div style="font-family:var(--font-mono);font-size:var(--text-xs);background:var(--color-bg);padding:var(--space-3);border-radius:var(--radius-sm)">for (i=1; i<=n; i++)</div>
+    </div>
+    <div style="background:var(--color-surface);border:2px solid var(--color-accent);border-radius:var(--radius-lg);padding:var(--space-6)">
+      <div style="font-family:var(--font-display);font-weight:700;font-size:var(--text-lg);margin-bottom:var(--space-3);color:var(--color-accent)">while 循环</div>
+      <p style="font-size:var(--text-sm);margin-bottom:var(--space-3)">像自动续杯机：杯子不满就一直倒，满了停。</p>
+      <div style="font-family:var(--font-mono);font-size:var(--text-xs);background:var(--color-bg);padding:var(--space-3);border-radius:var(--radius-sm)">while (sum &lt;= k)</div>
+    </div>
+  </div>
+</section>
+
+<section class="screen animate-in">
+  <h2 class="screen-heading">级数求和：倒什么时候够？</h2>
+  <p>问题：计算 1 + 1/2 + 1/3 + 1/4 + ... 最少需要加多少项，才能使和 ≥ k？</p>
+  <p>这就是著名的 <span class="tt" data-tip="调和级数是 1 + 1/2 + 1/3 + 1/4 + ... 的无穷和。它是发散的——只要加足够多项，总和可以超过任意大的数，但增长极慢。">调和级数</span>。你不知道要加几项，只知道什么时候可以停——所以用 while。</p>
+
+  <div class="translation-block animate-in">
+    <div class="translation-header">
+      <span class="translation-label code">级数求和.cpp</span>
+      <span class="translation-label english">逐行解释</span>
+    </div>
+    <div class="translation-code"><span class="code-keyword">int</span> k;
+cin >> k;
+
+<span class="code-keyword">double</span> sum = <span class="code-number">0</span>;
+<span class="code-keyword">int</span> n = <span class="code-number">0</span>;
+<span class="code-keyword">while</span> (sum <= k) {
+    n++;
+    sum += <span class="code-number">1.0</span> / n;
+}
+
+cout << n << <span class="code-string">"\n"</span>;</div>
+    <div class="translation-english">
+      <div class="en-line"><span class="en-line-num">1-2</span><span class="en-line-text">读入目标值 k</span></div>
+      <div class="en-line"><span class="en-line-num">4</span><span class="en-line-text">当前总和，从 0 开始</span></div>
+      <div class="en-line"><span class="en-line-num">5</span><span class="en-line-text">当前加到了第 n 项，从 0 开始</span></div>
+      <div class="en-line"><span class="en-line-num">6</span><span class="en-line-text">只要总和还没超过 k，就继续</span></div>
+      <div class="en-line"><span class="en-line-num">7</span><span class="en-line-text">项数加 1</span></div>
+      <div class="en-line"><span class="en-line-num">8</span><span class="en-line-text">把第 n 项（1/n）加入总和</span></div>
+      <div class="en-line"><span class="en-line-num">11</span><span class="en-line-text">循环退出时，n 就是所需项数</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="screen animate-in">
+  <h2 class="screen-heading">条件检查者 vs 循环体的对话</h2>
+  <p>想象 while 循环内部有两个角色在对话：负责检查条件的<strong>检查者</strong>和负责执行任务的<strong>循环体</strong>。以 k=2 为例：</p>
+
+  <div class="chat-window" id="chatWindow">
+    <div class="chat-header">
+      <div>
+        <div class="chat-title">while 循环内部通信</div>
+        <div class="chat-subtitle">级数求和，k = 2</div>
+      </div>
+      <div style="display:flex;gap:var(--space-2)">
+        <div style="width:10px;height:10px;border-radius:50%;background:#ff5f57"></div>
+        <div style="width:10px;height:10px;border-radius:50%;background:#ffbd2e"></div>
+        <div style="width:10px;height:10px;border-radius:50%;background:#28ca41"></div>
+      </div>
+    </div>
+    <div class="chat-messages" id="chatMessages"></div>
+    <div class="chat-controls">
+      <button class="btn btn-primary" id="chatNext">下一步 →</button>
+      <button class="btn btn-outline" id="chatReset">重置</button>
+    </div>
+  </div>
+</section>
+
+<!-- QUIZ 3 -->
+<section class="screen animate-in">
+  <div class="quiz-block">
+    <div class="quiz-header">
+      <span class="quiz-badge">测验</span>
+      <span class="quiz-title">模块 3 · while 循环</span>
+    </div>
+    <div class="quiz-body">
+
+      <div class="quiz-question">
+        <div class="quiz-q-num">问题 1</div>
+        <div class="quiz-q-text">游泳问题：每步游 2.0 米，之后每步减少 2%（乘以 0.98）。如果要游 100 米，你估计会循环约多少次？</div>
+        <div class="quiz-options" data-correct="c">
+          <div class="quiz-option" data-val="a">约 50 次</div>
+          <div class="quiz-option" data-val="b">恰好 100 次</div>
+          <div class="quiz-option" data-val="c">超过 100 次（因为每步越来越短，后期步长远小于 2 米）</div>
+          <div class="quiz-option" data-val="d">无法确定，可能无限循环</div>
+        </div>
+        <div class="quiz-feedback correct">✓ 对！因为步长 2 × 0.98 × 0.98 × ... 越来越小，后期每步接近 0，需要大量步骤才能累计够 100 米。这就是 while 循环的意义——让程序自己数，你不用猜。</div>
+        <div class="quiz-feedback wrong">想想步长的变化：第一步 2 米，第二步 1.96 米，第三步 1.92 米……步长在不断缩短。</div>
+      </div>
+
+      <div class="quiz-question">
+        <div class="quiz-q-num">问题 2</div>
+        <div class="quiz-q-text">一尺之棰（一根棍子每天切掉一半）：如果 a = 1，程序会怎样？</div>
+        <div class="quiz-code-snippet">int a;
+cin >> a;
+int day = 1;
+while (a > 1) {
+    day++;
+    a /= 2;
+}
+cout &lt;&lt; day;</div>
+        <div class="quiz-options" data-correct="a">
+          <div class="quiz-option" data-val="a">直接输出 1，因为 while 条件 a > 1 一开始就不成立，循环一次都不执行</div>
+          <div class="quiz-option" data-val="b">程序崩溃，因为 1/2=0 会死循环</div>
+          <div class="quiz-option" data-val="c">输出 0</div>
+          <div class="quiz-option" data-val="d">一直循环下去</div>
+        </div>
+        <div class="quiz-feedback correct">✓ 正确！当 a=1 时，while(1>1) 为假，循环体一次都不进入，day 保持初始值 1，直接输出。这是 while 循环的重要特性：条件一开始就不满足时，一次都不执行。</div>
+        <div class="quiz-feedback wrong">注意：while 循环在进入循环体之前先检查条件。如果条件一开始就是假的，会发生什么？</div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+</div>
+</section>
+
+<!-- ==================== MODULE 4 ==================== -->
+<section class="module" id="m4" style="background:var(--color-bg-warm)">
+<div class="module-content">
+
+<header class="module-header animate-in">
+  <span class="module-number">04</span>
+  <h1 class="module-title">嵌套循环：循环里的循环</h1>
+  <p class="module-subtitle">用两层循环画出二维图案——行和列的双重控制</p>
+</header>
+
+<section class="screen animate-in">
+  <h2 class="screen-heading">什么是嵌套循环？</h2>
+  <p>嵌套循环就是在一个循环的内部再放一个循环。外层循环控制"行"，内层循环控制"列"——就像打印一张表格。</p>
+  <p>想象你在填一张 n×n 的座位表：外层循环"换一排"，内层循环"在这排填满所有位置"。</p>
+
+  <div class="aha-box animate-in">
+    <div class="aha-label">💡 关键规律</div>
+    <div class="aha-text">外层循环每执行 1 次，内层循环就完整执行一遍。如果外层循环 n 次，内层也循环 n 次，总共执行 n×n 次。</div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:auto 1fr;gap:var(--space-6);align-items:start;margin:var(--space-6) 0">
+    <div id="nestedViz" style="display:grid;grid-template-columns:repeat(4,44px);gap:4px">
+    </div>
+    <div>
+      <div id="nestedInfo" style="font-family:var(--font-mono);font-size:var(--text-sm);background:var(--color-bg-code);color:#CDD6F4;padding:var(--space-4);border-radius:var(--radius-md);line-height:1.8">
+        点击"演示"观察嵌套循环的执行顺序
+      </div>
+      <button class="btn btn-primary" id="nestedStart" style="margin-top:var(--space-4)">演示嵌套循环 ▶</button>
+    </div>
+  </div>
+</section>
+
+<section class="screen animate-in">
+  <h2 class="screen-heading">数字直角三角形</h2>
+  <p>输出 n 行：第 1 行 n 个数，第 2 行 n-1 个数……第 n 行 1 个数，全部连续编号。</p>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-6);margin:var(--space-6) 0;align-items:start">
+    <div>
+      <div style="font-size:var(--text-sm);color:var(--color-text-secondary);margin-bottom:var(--space-3)">n=4 时的输出：</div>
+      <pre style="background:var(--color-bg-code);color:#A6E3A1;padding:var(--space-5);border-radius:var(--radius-md);font-size:var(--text-base);line-height:2">01 02 03 04
+05 06 07
+08 09
+10</pre>
+    </div>
+    <div style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-md);padding:var(--space-5)">
+      <div style="font-size:var(--text-sm);font-weight:600;margin-bottom:var(--space-3)">逻辑拆解</div>
+      <div style="font-size:var(--text-sm);color:var(--color-text-secondary);line-height:1.8">
+        外层 i = 1 到 n（控制行）<br>
+        内层 j = 0 到 <strong>n-i</strong>（控制每行个数）<br>
+        每轮打印 num，然后 num++
+      </div>
+    </div>
+  </div>
+
+  <div class="translation-block animate-in">
+    <div class="translation-header">
+      <span class="translation-label code">数字直角三角形.cpp</span>
+      <span class="translation-label english">逐行解释</span>
+    </div>
+    <div class="translation-code"><span class="code-keyword">int</span> n;
+cin >> n;
+
+<span class="code-keyword">int</span> num = <span class="code-number">1</span>;  <span class="code-comment">// 当前数字</span>
+<span class="code-keyword">for</span> (<span class="code-keyword">int</span> i = <span class="code-number">1</span>; i <= n; i++) {
+    <span class="code-keyword">for</span> (<span class="code-keyword">int</span> j = <span class="code-number">0</span>; j < n-i+<span class="code-number">1</span>; j++) {
+        <span class="code-function">printf</span>(<span class="code-string">"%02d"</span>, num);
+        num++;
+    }
+    cout << <span class="code-string">"\n"</span>;
+}</div>
+    <div class="translation-english">
+      <div class="en-line"><span class="en-line-num">4</span><span class="en-line-text">num 全程保持连续，不在行与行之间重置</span></div>
+      <div class="en-line"><span class="en-line-num">5</span><span class="en-line-text">外层：i=1,2,...,n 控制第几行</span></div>
+      <div class="en-line"><span class="en-line-num">6</span><span class="en-line-text">内层：每行打 n-i+1 个数（第1行n个，第n行1个）</span></div>
+      <div class="en-line"><span class="en-line-num">7</span><span class="en-line-text">%02d = 两位补零格式（01,02,…,09,10,…）</span></div>
+      <div class="en-line"><span class="en-line-num">8</span><span class="en-line-text">打完一个数，序号+1</span></div>
+      <div class="en-line"><span class="en-line-num">10</span><span class="en-line-text">内层结束，换行（每行打完才换行）</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- QUIZ 4 -->
+<section class="screen animate-in">
+  <div class="quiz-block">
+    <div class="quiz-header">
+      <span class="quiz-badge">测验</span>
+      <span class="quiz-title">模块 4 · 嵌套循环</span>
+    </div>
+    <div class="quiz-body">
+
+      <div class="quiz-question">
+        <div class="quiz-q-num">问题 1</div>
+        <div class="quiz-q-text">数字直角三角形 n=4 时，内层循环 <code>j < n-i+1</code> 在第 3 行（i=3）时实际执行几次？</div>
+        <div class="quiz-options" data-correct="b">
+          <div class="quiz-option" data-val="a">3 次</div>
+          <div class="quiz-option" data-val="b">2 次（n-i+1 = 4-3+1 = 2）</div>
+          <div class="quiz-option" data-val="c">4 次</div>
+          <div class="quiz-option" data-val="d">1 次</div>
+        </div>
+        <div class="quiz-feedback correct">✓ 对！代入 i=3, n=4：n-i+1 = 4-3+1 = 2，所以第3行打印2个数。这正是"随着行号增大，每行数字减少"的实现方式。</div>
+        <div class="quiz-feedback wrong">把 n=4, i=3 代入 n-i+1 算一下：4-3+1 = ?</div>
+      </div>
+
+      <div class="quiz-question">
+        <div class="quiz-q-num">问题 2</div>
+        <div class="quiz-q-text">如果想打印一个"正三角形"（第1行1个，第2行2个，…，第n行n个），应该把内层条件改成什么？</div>
+        <div class="quiz-options" data-correct="c">
+          <div class="quiz-option" data-val="a">j &lt; n</div>
+          <div class="quiz-option" data-val="b">j &lt; n - i</div>
+          <div class="quiz-option" data-val="c">j &lt; i（第i行打i个数）</div>
+          <div class="quiz-option" data-val="d">j &lt;= n - i + 1</div>
+        </div>
+        <div class="quiz-feedback correct">✓ 正确！<code>j < i</code> 在 i=1 时执行 1 次，i=2 时执行 2 次，i=n 时执行 n 次。把 i 作为内层循环的上限，就能产生递增的行长度。</div>
+        <div class="quiz-feedback wrong">目标是"第i行打i个数"。内层循环的次数应该等于 i。哪个条件能保证执行 i 次？</div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+</div>
+</section>
+
+<!-- ==================== MODULE 5 ==================== -->
+<section class="module" id="m5" style="background:var(--color-bg)">
+<div class="module-content">
+
+<header class="module-header animate-in">
+  <span class="module-number">05</span>
+  <h1 class="module-title">数字手术：拆解整数的循环</h1>
+  <p class="module-subtitle">用 % 和 / 把数字像剥洋葱一样一层层拆开</p>
+</header>
+
+<section class="screen animate-in">
+  <h2 class="screen-heading">整数的"位数手术"</h2>
+  <p>很多问题需要处理一个整数的每一位数字——比如反转数字、统计某个数字出现次数。怎么做？</p>
+  <p>关键是两个操作：</p>
+
+  <div class="pattern-cards stagger-children" style="grid-template-columns:1fr 1fr">
+    <div class="pattern-card animate-in" style="border-top:3px solid var(--color-actor-4)">
+      <div class="pattern-icon">🔧</div>
+      <div class="pattern-name"><code>num % 10</code></div>
+      <div class="pattern-desc">取出最末尾的一位数字。就像只看快递单号最后一位。</div>
+      <div class="pattern-example">1234 % 10 = 4</div>
+    </div>
+    <div class="pattern-card animate-in" style="border-top:3px solid var(--color-actor-2)">
+      <div class="pattern-icon">✂️</div>
+      <div class="pattern-name"><code>num / 10</code></div>
+      <div class="pattern-desc">去掉最末尾那一位，剩下高位部分。</div>
+      <div class="pattern-example">1234 / 10 = 123</div>
+    </div>
+  </div>
+
+  <p>把这两个操作配合 while 循环，就能逐位"剥"掉整个数字：</p>
+</section>
+
+<section class="screen animate-in">
+  <h2 class="screen-heading">动画：从 1234 里数出"3"出现了几次</h2>
+
+  <div class="digit-flow" id="digitFlow">
+    <div class="digit-display" id="digitDisplay">
+      <div class="digit-box" id="db0">1</div>
+      <div class="digit-box" id="db1">2</div>
+      <div class="digit-box" id="db2">3</div>
+      <div class="digit-box" id="db3">4</div>
+    </div>
+    <div class="digit-step-info">
+      <div class="digit-operation" id="digitOp">准备开始：num = 1234，查找目标 x = 3</div>
+      <div class="digit-result" id="digitResult">while (num > 0) 检查中……</div>
+    </div>
+    <div class="digit-counter" id="digitCounter">0</div>
+    <div class="digit-counter-label">出现次数 cnt</div>
+    <div style="display:flex;justify-content:center;gap:var(--space-3);margin-top:var(--space-6)">
+      <button class="btn btn-primary" id="digitNext">下一步 →</button>
+      <button class="btn btn-outline" id="digitReset">重置</button>
+    </div>
+  </div>
+</section>
+
+<section class="screen animate-in">
+  <h2 class="screen-heading">代码解读：计数问题</h2>
+  <p>统计 1 到 n 的所有数字中，数字 x 总共出现了多少次。</p>
+
+  <div class="translation-block animate-in">
+    <div class="translation-header">
+      <span class="translation-label code">计数问题.cpp</span>
+      <span class="translation-label english">逐行解释</span>
+    </div>
+    <div class="translation-code"><span class="code-keyword">int</span> n, x;
+cin >> n >> x;
+<span class="code-keyword">int</span> cnt = <span class="code-number">0</span>;
+<span class="code-keyword">for</span> (<span class="code-keyword">int</span> i = <span class="code-number">1</span>; i <= n; i++) {
+    <span class="code-keyword">int</span> num = i;
+    <span class="code-keyword">while</span> (num > <span class="code-number">0</span>) {
+        <span class="code-keyword">if</span> (num % <span class="code-number">10</span> == x) cnt++;
+        num /= <span class="code-number">10</span>;
+    }
+}
+cout << cnt << <span class="code-string">"\n"</span>;</div>
+    <div class="translation-english">
+      <div class="en-line"><span class="en-line-num">1-3</span><span class="en-line-text">读入 n 和目标数字 x；计数器 cnt 从 0 开始</span></div>
+      <div class="en-line"><span class="en-line-num">4</span><span class="en-line-text">外层 for：遍历 1 到 n 的每个数 i</span></div>
+      <div class="en-line"><span class="en-line-num">5</span><span class="en-line-text">用 num 临时保存 i（不破坏循环变量）</span></div>
+      <div class="en-line"><span class="en-line-num">6</span><span class="en-line-text">内层 while：只要 num 还有位数，就继续剥</span></div>
+      <div class="en-line"><span class="en-line-num">7</span><span class="en-line-text">末位等于 x？计数器+1</span></div>
+      <div class="en-line"><span class="en-line-num">8</span><span class="en-line-text">去掉末位，继续处理高位</span></div>
+    </div>
+  </div>
+
+  <div class="aha-box animate-in">
+    <div class="aha-label">💡 关键洞察</div>
+    <div class="aha-text">"for + while 嵌套"是处理数字问题的经典结构：外层 for 遍历所有数，内层 while 拆解每个数的位。掌握了这个结构，数字类题目大半就搞定了。</div>
+  </div>
+</section>
+
+<!-- QUIZ 5 -->
+<section class="screen animate-in">
+  <div class="quiz-block">
+    <div class="quiz-header">
+      <span class="quiz-badge">测验</span>
+      <span class="quiz-title">模块 5 · 数字手术</span>
+    </div>
+    <div class="quiz-body">
+
+      <div class="quiz-question">
+        <div class="quiz-q-num">问题 1</div>
+        <div class="quiz-q-text">如果要把整数 <code>456</code> 的各位数字相加（4+5+6=15），应该怎么修改计数问题的内层循环体？</div>
+        <div class="quiz-options" data-correct="b">
+          <div class="quiz-option" data-val="a">把 <code>if (num % 10 == x) cnt++</code> 改成 <code>cnt += num</code></div>
+          <div class="quiz-option" data-val="b">把 <code>if (num % 10 == x) cnt++</code> 改成 <code>cnt += num % 10</code></div>
+          <div class="quiz-option" data-val="c">不需要改，直接用</div>
+          <div class="quiz-option" data-val="d">把 while 改成 for</div>
+        </div>
+        <div class="quiz-feedback correct">✓ 对！<code>num % 10</code> 取出最末位，直接把它加进 cnt 就是累加各位之和。去掉 if 判断，因为我们要加所有位，不是只加特定数字。</div>
+        <div class="quiz-feedback wrong">目标是把每一位数字都加进去。<code>num % 10</code> 就是末位数字，怎么把它加进求和结果？</div>
+      </div>
+
+      <div class="quiz-question">
+        <div class="quiz-q-num">问题 2</div>
+        <div class="quiz-q-text">较大质数：一个数 n 只有两个质因数（例如 n = 15 = 3 × 5）。代码只需循环到 √n 就能找到较小的那个，为什么？</div>
+        <div class="quiz-options" data-correct="a">
+          <div class="quiz-option" data-val="a">如果 n 有一个因数小于 √n，那另一个因数一定大于 √n。两个因数不可能都大于 √n（否则乘积就超过 n 了）</div>
+          <div class="quiz-option" data-val="b">√n 是 n 的中位数</div>
+          <div class="quiz-option" data-val="c">质数都小于 √n</div>
+          <div class="quiz-option" data-val="d">只是为了节省时间，不影响正确性</div>
+        </div>
+        <div class="quiz-feedback correct">✓ 精准！这就是"√n 优化"的数学原理。15 = 3×5，3 < √15 < 5，所以找到 3 就能推算出 5。循环到 √n 足够了，省去了大量无用检查。</div>
+        <div class="quiz-feedback wrong">假设 n=a×b，如果 a 和 b 都大于 √n，那 a×b 会比 n 大还是小？</div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+</div>
+</section>
+
+<!-- ==================== MODULE 6 ==================== -->
+<section class="module" id="m6" style="background:var(--color-bg-warm)">
+<div class="module-content">
+
+<header class="module-header animate-in">
+  <span class="module-number">06</span>
+  <h1 class="module-title">模拟与全局视角</h1>
+  <p class="module-subtitle">用循环模拟时间流逝，以及 20 道题的完整算法地图</p>
+</header>
+
+<section class="screen animate-in">
+  <h2 class="screen-heading">模拟类题目：让程序重演一遍</h2>
+  <p>有一类题目不需要数学公式——你只需要让程序忠实地模拟题目描述的过程，循环就是时间的流逝。</p>
+
+  <div class="translation-block animate-in">
+    <div class="translation-header">
+      <span class="translation-label code">最长连号.cpp</span>
+      <span class="translation-label english">逐行解释</span>
+    </div>
+    <div class="translation-code"><span class="code-keyword">int</span> maxLen = <span class="code-number">1</span>, curLen = <span class="code-number">1</span>;
+<span class="code-keyword">for</span> (<span class="code-keyword">int</span> i = <span class="code-number">1</span>; i < n; i++) {
+    <span class="code-keyword">if</span> (a[i] == a[i-<span class="code-number">1</span>] + <span class="code-number">1</span>) {
+        curLen++;
+    } <span class="code-keyword">else</span> {
+        curLen = <span class="code-number">1</span>;
+    }
+    maxLen = <span class="code-function">max</span>(maxLen, curLen);
+}</div>
+    <div class="translation-english">
+      <div class="en-line"><span class="en-line-num">1</span><span class="en-line-text">maxLen：历史最长连号；curLen：当前连号长度</span></div>
+      <div class="en-line"><span class="en-line-num">2</span><span class="en-line-text">从第二个数开始（需要和前一个比较）</span></div>
+      <div class="en-line"><span class="en-line-num">3</span><span class="en-line-text">当前数恰好比前一个大 1？说明连号延续了</span></div>
+      <div class="en-line"><span class="en-line-num">4</span><span class="en-line-text">是：当前连号长度+1</span></div>
+      <div class="en-line"><span class="en-line-num">6</span><span class="en-line-text">否：连号断了，从 1 重新计</span></div>
+      <div class="en-line"><span class="en-line-num">8</span><span class="en-line-text">每轮更新历史最长（追踪模式！）</span></div>
+    </div>
+  </div>
+
+  <div class="aha-box animate-in">
+    <div class="aha-label">💡 双变量追踪技巧</div>
+    <div class="aha-text">一个变量追踪"当前状态"（curLen），一个变量追踪"历史最优"（maxLen）——这是解决"最长/最大连续......"问题的通用框架。</div>
+  </div>
+</section>
+
+<section class="screen animate-in">
+  <h2 class="screen-heading">20 道题的算法全景图</h2>
+  <p>这 20 道题覆盖了循环结构的六大核心模式：</p>
+
+  <div class="arch-grid animate-in stagger-children">
+    <div class="arch-card animate-in">
+      <div class="arch-card-name">➕ 积累模式</div>
+      <div class="arch-problems">
+        <span class="arch-tag">求和</span>
+        <span class="arch-tag">打分</span>
+        <span class="arch-tag">级数求和</span>
+        <span class="arch-tag">游泳</span>
+        <span class="arch-tag">质数口袋</span>
+      </div>
+    </div>
+    <div class="arch-card animate-in">
+      <div class="arch-card-name">🎯 追踪模式</div>
+      <div class="arch-problems">
+        <span class="arch-tag">找最小值</span>
+        <span class="arch-tag">极差</span>
+        <span class="arch-tag">最长连号</span>
+        <span class="arch-tag">打分</span>
+      </div>
+    </div>
+    <div class="arch-card animate-in">
+      <div class="arch-card-name">🔀 筛选模式</div>
+      <div class="arch-problems">
+        <span class="arch-tag">分类平均</span>
+        <span class="arch-tag">回文质数</span>
+        <span class="arch-tag">质数口袋</span>
+      </div>
+    </div>
+    <div class="arch-card animate-in">
+      <div class="arch-card-name">🔢 数字拆解</div>
+      <div class="arch-problems">
+        <span class="arch-tag">计数问题</span>
+        <span class="arch-tag">数字反转</span>
+        <span class="arch-tag">较大质数</span>
+        <span class="arch-tag">回文质数</span>
+      </div>
+    </div>
+    <div class="arch-card animate-in">
+      <div class="arch-card-name">🕹️ 模拟计算</div>
+      <div class="arch-problems">
+        <span class="arch-tag">金币</span>
+        <span class="arch-tag">津津存储计划</span>
+        <span class="arch-tag">一尺之棰</span>
+        <span class="arch-tag">游泳</span>
+      </div>
+    </div>
+    <div class="arch-card animate-in">
+      <div class="arch-card-name">📐 图形输出</div>
+      <div class="arch-problems">
+        <span class="arch-tag">数字直角三角形</span>
+        <span class="arch-tag">求三角形</span>
+        <span class="arch-tag">斐波那契</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FINAL QUIZ -->
+<section class="screen animate-in">
+  <div class="quiz-block">
+    <div class="quiz-header">
+      <span class="quiz-badge">最终测验</span>
+      <span class="quiz-title">综合应用</span>
+    </div>
+    <div class="quiz-body">
+
+      <div class="quiz-question">
+        <div class="quiz-q-num">综合题 1</div>
+        <div class="quiz-q-text">新题：给定一组温度数据，找出最长的"连续上升"天数（每天都比前一天高）。这道题综合了哪两种模式？</div>
+        <div class="quiz-options" data-correct="c">
+          <div class="quiz-option" data-val="a">积累模式 + 筛选模式</div>
+          <div class="quiz-option" data-val="b">嵌套循环 + 数字拆解</div>
+          <div class="quiz-option" data-val="c">追踪模式（历史最长）+ 最长连号的双变量框架</div>
+          <div class="quiz-option" data-val="d">只需要 while 循环</div>
+        </div>
+        <div class="quiz-feedback correct">✓ 完全正确！就像最长连号：curLen 追踪当前连续上升天数，maxLen 追踪历史最长。判断条件从"a[i]==a[i-1]+1"改成"temp[i]>temp[i-1]"。</div>
+        <div class="quiz-feedback wrong">想想最长连号是怎么做的——两个变量分别追踪什么？这道题可以套用同样的结构吗？</div>
+      </div>
+
+      <div class="quiz-question">
+        <div class="quiz-q-num">综合题 2</div>
+        <div class="quiz-q-text">金币问题：第 1 天得 1 枚，接下来 2 天各得 2 枚，接下来 3 天各得 3 枚……问 k 天后共得多少？这是哪种循环策略？</div>
+        <div class="quiz-options" data-correct="b">
+          <div class="quiz-option" data-val="a">直接 for 循环 k 次，每次加上当天枚数</div>
+          <div class="quiz-option" data-val="b">while 循环按"阶段"推进：每阶段完整处理 stage 天，k 不够一阶段就处理剩余天</div>
+          <div class="quiz-option" data-val="c">嵌套循环：外层阶段，内层天</div>
+          <div class="quiz-option" data-val="d">用公式计算，不需要循环</div>
+        </div>
+        <div class="quiz-feedback correct">✓ 对！金币.cpp 用 while 循环，每轮处理"一个完整阶段"或"最后不完整的若干天"。这比天级别的 for 循环更高效，也是模拟类问题的常见优化思路。</div>
+        <div class="quiz-feedback wrong">直接一天天循环可以，但不够优雅。看看金币.cpp 的思路：它是怎么批量处理"一个阶段"的？</div>
+      </div>
+
+      <div class="quiz-question">
+        <div class="quiz-q-num">综合题 3</div>
+        <div class="quiz-q-text">你在做一道新题：判断一个数 n 是否是<span class="tt" data-tip="回文数是正着读和反着读都一样的数，如 121、1331、12321。">回文数</span>。最简洁的方案是什么？</div>
+        <div class="quiz-options" data-correct="b">
+          <div class="quiz-option" data-val="a">嵌套循环枚举所有可能</div>
+          <div class="quiz-option" data-val="b">用数字反转的方法（把 n 反转后的数与 n 比较），借助 % 和 / 循环拆解</div>
+          <div class="quiz-option" data-val="c">用字符串逆序后比较</div>
+          <div class="quiz-option" data-val="d">b 和 c 都可以，选哪个都行</div>
+        </div>
+        <div class="quiz-feedback correct">✓ b 和 c 都正确！b（纯数字操作）更快；c（字符串）更直观。在竞赛里两者都被广泛使用。理解了 % 和 / 拆解数字后，b 对你来说应该很自然了。</div>
+        <div class="quiz-feedback wrong">想想数字反转.cpp 是怎么做的——反转后和原数比较，这正好就是回文数的判断条件！</div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<section class="screen animate-in" style="text-align:center;padding:var(--space-16) 0">
+  <div style="font-size:3rem;margin-bottom:var(--space-6)">🎉</div>
+  <h2 style="font-family:var(--font-display);font-weight:800;font-size:var(--text-4xl);margin-bottom:var(--space-4)">课程完成！</h2>
+  <p style="font-size:var(--text-lg);color:var(--color-text-secondary);max-width:480px;margin:0 auto var(--space-8)">你现在掌握了循环结构的六大模式：积累、追踪、筛选、数字拆解、模拟、嵌套。打开洛谷，挑一道新题试试。</p>
+  <div style="display:flex;gap:var(--space-4);justify-content:center;flex-wrap:wrap">
+    <div style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-lg);padding:var(--space-5) var(--space-6);text-align:left;min-width:180px">
+      <div style="font-size:1.5rem;margin-bottom:var(--space-2)">📁</div>
+      <div style="font-weight:700;margin-bottom:var(--space-1)">20 道题已学完</div>
+      <div style="font-size:var(--text-sm);color:var(--color-text-secondary)">洛谷循环结构专题</div>
+    </div>
+    <div style="background:var(--color-accent-light);border:1px solid var(--color-accent-muted);border-radius:var(--radius-lg);padding:var(--space-5) var(--space-6);text-align:left;min-width:180px">
+      <div style="font-size:1.5rem;margin-bottom:var(--space-2)">🔑</div>
+      <div style="font-weight:700;margin-bottom:var(--space-1)">下一步</div>
+      <div style="font-size:var(--text-sm);color:var(--color-text-secondary)">递归与分治</div>
+    </div>
+  </div>
+</section>
+
+</div>
+</section>
+
+<script>
+(function() {
+  // ===== PROGRESS & NAV DOTS =====
+  const progressBar = document.getElementById('progressBar');
+  const modules = Array.from(document.querySelectorAll('.module'));
+  const dots = Array.from(document.querySelectorAll('.nav-dot'));
+
+  function updateProgress() {
+    const scrollTop = window.scrollY;
+    const scrollH = document.documentElement.scrollHeight - window.innerHeight;
+    progressBar.style.width = (scrollH > 0 ? (scrollTop / scrollH) * 100 : 0) + '%';
+
+    let current = 0;
+    modules.forEach((m, i) => {
+      const rect = m.getBoundingClientRect();
+      if (rect.top <= window.innerHeight * 0.5) current = i;
+    });
+    dots.forEach((d, i) => {
+      d.classList.toggle('active', i === current);
+      if (i < current) d.classList.add('visited');
+    });
+  }
+  window.addEventListener('scroll', () => requestAnimationFrame(updateProgress), { passive: true });
+  updateProgress();
+
+  dots.forEach((dot, i) => {
+    dot.addEventListener('click', () => {
+      modules[i].scrollIntoView({ behavior: 'smooth' });
+    });
+  });
+
+  // ===== KEYBOARD NAV =====
+  document.addEventListener('keydown', (e) => {
+    if (['INPUT','TEXTAREA'].includes(e.target.tagName)) return;
+    const current = dots.findIndex(d => d.classList.contains('active'));
+    if ((e.key === 'ArrowDown' || e.key === 'ArrowRight') && current < modules.length - 1) {
+      modules[current + 1].scrollIntoView({ behavior: 'smooth' }); e.preventDefault();
+    }
+    if ((e.key === 'ArrowUp' || e.key === 'ArrowLeft') && current > 0) {
+      modules[current - 1].scrollIntoView({ behavior: 'smooth' }); e.preventDefault();
+    }
+  });
+
+  // ===== ANIMATE IN =====
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) { e.target.classList.add('visible'); observer.unobserve(e.target); }
+    });
+  }, { rootMargin: '0px 0px -8% 0px', threshold: 0.08 });
+  document.querySelectorAll('.animate-in').forEach(el => observer.observe(el));
+
+  document.querySelectorAll('.stagger-children').forEach(p => {
+    Array.from(p.children).forEach((c, i) => c.style.setProperty('--stagger-index', i));
+  });
+
+  // ===== TOOLTIP =====
+  const ttPopup = document.getElementById('tt-popup');
+  document.querySelectorAll('.tt').forEach(el => {
+    el.addEventListener('mouseenter', (ev) => {
+      ttPopup.textContent = el.dataset.tip;
+      ttPopup.style.display = 'block';
+      const r = el.getBoundingClientRect();
+      let top = r.top - ttPopup.offsetHeight - 8;
+      let left = r.left + r.width / 2 - ttPopup.offsetWidth / 2;
+      if (top < 8) top = r.bottom + 8;
+      left = Math.max(8, Math.min(left, window.innerWidth - ttPopup.offsetWidth - 8));
+      ttPopup.style.top = top + 'px';
+      ttPopup.style.left = left + 'px';
+    });
+    el.addEventListener('mouseleave', () => { ttPopup.style.display = 'none'; });
+    el.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      ttPopup.textContent = el.dataset.tip;
+      ttPopup.style.display = 'block';
+      const r = el.getBoundingClientRect();
+      let top = r.top - ttPopup.offsetHeight - 8;
+      let left = r.left + r.width / 2 - ttPopup.offsetWidth / 2;
+      if (top < 8) top = r.bottom + 8;
+      left = Math.max(8, Math.min(left, window.innerWidth - ttPopup.offsetWidth - 8));
+      ttPopup.style.top = top + 'px';
+      ttPopup.style.left = left + 'px';
+    });
+  });
+  document.addEventListener('click', () => { ttPopup.style.display = 'none'; });
+
+  // ===== QUIZ =====
+  document.querySelectorAll('.quiz-question').forEach(q => {
+    const optGroup = q.querySelector('.quiz-options');
+    const correct = optGroup.dataset.correct;
+    const feedbackCorrect = q.querySelector('.quiz-feedback.correct');
+    const feedbackWrong = q.querySelector('.quiz-feedback.wrong');
+    optGroup.querySelectorAll('.quiz-option').forEach(opt => {
+      opt.addEventListener('click', () => {
+        if (optGroup.classList.contains('locked')) return;
+        optGroup.classList.add('locked');
+        optGroup.querySelectorAll('.quiz-option').forEach(o => o.classList.add('locked'));
+        if (opt.dataset.val === correct) {
+          opt.classList.add('correct');
+          feedbackCorrect.classList.add('show');
+        } else {
+          opt.classList.add('wrong');
+          feedbackWrong.classList.add('show');
+          optGroup.querySelectorAll('.quiz-option').forEach(o => {
+            if (o.dataset.val === correct) o.classList.add('correct');
+          });
+        }
+      });
+    });
+  });
+
+  // ===== GROUP CHAT =====
+  const chatMessages = document.getElementById('chatMessages');
+  const chatNext = document.getElementById('chatNext');
+  const chatReset = document.getElementById('chatReset');
+
+  const chatScript = [
+    { side: 'left',  name: '条件检查者',  cls: 'bubble-checker', avatar: 'avatar-checker', text: '初始化完毕：sum = 0，n = 0，k = 2。请检查条件：sum (0) ≤ k (2)？' },
+    { side: 'right', name: '循环体',      cls: 'bubble-body',    avatar: 'avatar-body',    text: '✓ 条件成立！执行：n++ → n=1，sum += 1.0/1 → sum = 1.000' },
+    { side: 'left',  name: '条件检查者',  cls: 'bubble-checker', avatar: 'avatar-checker', text: 'sum (1.000) ≤ k (2)？→ 是，继续。' },
+    { side: 'right', name: '循环体',      cls: 'bubble-body',    avatar: 'avatar-body',    text: 'n++ → n=2，sum += 1.0/2 → sum = 1.500' },
+    { side: 'left',  name: '条件检查者',  cls: 'bubble-checker', avatar: 'avatar-checker', text: 'sum (1.500) ≤ k (2)？→ 是，继续。' },
+    { side: 'right', name: '循环体',      cls: 'bubble-body',    avatar: 'avatar-body',    text: 'n++ → n=3，sum += 1.0/3 → sum = 1.833' },
+    { side: 'left',  name: '条件检查者',  cls: 'bubble-checker', avatar: 'avatar-checker', text: 'sum (1.833) ≤ k (2)？→ 是，继续。' },
+    { side: 'right', name: '循环体',      cls: 'bubble-body',    avatar: 'avatar-body',    text: 'n++ → n=4，sum += 1.0/4 → sum = 2.083' },
+    { side: 'left',  name: '条件检查者',  cls: 'bubble-checker', avatar: 'avatar-checker', text: '⛔ sum (2.083) > k (2)！条件为假，退出循环。' },
+    { side: 'right', name: '循环体',      cls: 'bubble-body',    avatar: 'avatar-body',    text: '了解，停止执行。最终答案：n = 4（共需 4 项）' },
+  ];
+
+  let chatStep = 0;
+  chatNext.addEventListener('click', () => {
+    if (chatStep >= chatScript.length) return;
+    const s = chatScript[chatStep++];
+    const msg = document.createElement('div');
+    msg.className = `chat-msg${s.side === 'right' ? ' right' : ''}`;
+    msg.innerHTML = `<div class="chat-avatar ${s.avatar}">${s.side === 'left' ? '✓' : '⚙'}</div>
+      <div><div class="chat-name">${s.name}</div><div class="bubble ${s.cls}">${s.text}</div></div>`;
+    chatMessages.appendChild(msg);
+    requestAnimationFrame(() => { requestAnimationFrame(() => msg.classList.add('show')); });
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+    if (chatStep >= chatScript.length) chatNext.textContent = '完成 ✓';
+  });
+
+  chatReset.addEventListener('click', () => {
+    chatMessages.innerHTML = '';
+    chatStep = 0;
+    chatNext.textContent = '下一步 →';
+  });
+
+  // ===== NESTED LOOP VIZ =====
+  const nestedViz = document.getElementById('nestedViz');
+  const nestedInfo = document.getElementById('nestedInfo');
+  const nestedStart = document.getElementById('nestedStart');
+  const N = 4;
+  const cells = [];
+  for (let r = 0; r < N; r++) {
+    cells[r] = [];
+    for (let c = 0; c < N; c++) {
+      const cell = document.createElement('div');
+      cell.style.cssText = `width:44px;height:44px;border-radius:6px;border:2px solid #E5DFD6;background:white;display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:0.75rem;transition:all 0.3s ease-out;`;
+      nestedViz.appendChild(cell);
+      cells[r][c] = cell;
+    }
+  }
+  let nestedRunning = false;
+  nestedStart.addEventListener('click', () => {
+    if (nestedRunning) return;
+    nestedRunning = true;
+    nestedStart.textContent = '运行中…';
+    cells.forEach(row => row.forEach(c => { c.style.background = 'white'; c.style.borderColor = '#E5DFD6'; c.textContent = ''; }));
+    let num = 1, delay = 0;
+    for (let i = 0; i < N; i++) {
+      for (let j = 0; j < N; j++) {
+        const ri = i, ci = j, n = num++;
+        setTimeout(() => {
+          cells[ri][ci].style.background = '#FDEEE9';
+          cells[ri][ci].style.borderColor = '#D94F30';
+          cells[ri][ci].textContent = String(n).padStart(2, '0');
+          nestedInfo.textContent = `i=${ri+1}, j=${ci+1} → 打印 ${String(n).padStart(2,'0')}`;
+          setTimeout(() => {
+            cells[ri][ci].style.background = '#E8F5EE';
+            cells[ri][ci].style.borderColor = '#2D8B55';
+          }, 250);
+        }, delay);
+        delay += 280;
+      }
+    }
+    setTimeout(() => {
+      nestedInfo.textContent = `完成！共执行 ${N}×${N} = ${N*N} 次，num 从 1 到 ${N*N}`;
+      nestedStart.textContent = '重新演示 ▶';
+      nestedRunning = false;
+    }, delay + 100);
+  });
+
+  // ===== DIGIT FLOW =====
+  const digitNext = document.getElementById('digitNext');
+  const digitReset = document.getElementById('digitReset');
+  const digitOp = document.getElementById('digitOp');
+  const digitResult = document.getElementById('digitResult');
+  const digitCounter = document.getElementById('digitCounter');
+  const dbs = [document.getElementById('db0'), document.getElementById('db1'), document.getElementById('db2'), document.getElementById('db3')];
+
+  const digitSteps = [
+    { num: 1234, cnt: 0, active: -1, op: '初始：num = 1234，查找 x = 3', result: 'while (1234 > 0) → 进入循环' },
+    { num: 1234, cnt: 0, active: 3, op: '1234 % 10 = 4，4 ≠ 3，不计数', result: '1234 / 10 = 123，去掉末位' },
+    { num:  123, cnt: 0, active: 2, op: '123 % 10 = 3，3 == 3！cnt++', result: '123 / 10 = 12' },
+    { num:   12, cnt: 1, active: 1, op: '12 % 10 = 2，2 ≠ 3，不计数', result: '12 / 10 = 1' },
+    { num:    1, cnt: 1, active: 0, op: '1 % 10 = 1，1 ≠ 3，不计数', result: '1 / 10 = 0' },
+    { num:    0, cnt: 1, active: -1, op: 'while (0 > 0) → 条件为假，退出', result: '最终：cnt = 1，数字 3 出现了 1 次 ✓' },
+  ];
+  let dStep = 0;
+
+  function renderDigitStep(s) {
+    const numStr = String(1234);
+    dbs.forEach((db, i) => {
+      db.className = 'digit-box';
+      if (s.active === i) db.classList.add('active');
+      else if (s.num < Math.pow(10, 3 - i)) db.classList.add('done');
+    });
+    digitOp.textContent = s.op;
+    digitResult.textContent = s.result;
+    digitCounter.textContent = s.cnt;
+  }
+
+  digitNext.addEventListener('click', () => {
+    if (dStep >= digitSteps.length) return;
+    renderDigitStep(digitSteps[dStep++]);
+    if (dStep >= digitSteps.length) digitNext.textContent = '完成 ✓';
+  });
+
+  digitReset.addEventListener('click', () => {
+    dStep = 0;
+    dbs.forEach((db, i) => { db.className = 'digit-box'; db.textContent = ['1','2','3','4'][i]; });
+    digitOp.textContent = '准备开始：num = 1234，查找目标 x = 3';
+    digitResult.textContent = 'while (num > 0) 检查中……';
+    digitCounter.textContent = '0';
+    digitNext.textContent = '下一步 →';
+  });
+
+})();
+</script>
+</body>
+</html>
