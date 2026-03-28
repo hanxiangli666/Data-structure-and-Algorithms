@@ -1,0 +1,1061 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>C++ Vector 完全指南</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+--bg:#FAF7F2;--bg2:#F5F0E8;--bgcode:#1E1E2E;
+--text:#2C2A28;--text2:#6B6560;--textm:#9E9790;
+--border:#E5DFD6;--borderl:#EEEBE5;
+--surf:#FFFFFF;--surfw:#FDF9F3;
+--acc:#2A7B9B;--acch:#1E6080;--accl:#E4F2F7;--accm:#5499B5;
+--ok:#2D8B55;--okl:#E8F5EE;--err:#C93B3B;--errl:#FDE8E8;
+--a1:#D94F30;--a2:#2A7B9B;--a3:#7B6DAA;--a4:#D4A843;--a5:#2D8B55;
+--fd:'Bricolage Grotesque',Georgia,serif;
+--fb:'DM Sans',-apple-system,sans-serif;
+--fm:'JetBrains Mono','Consolas',monospace;
+--txs:.75rem;--txsm:.875rem;--txb:1rem;--txl:1.125rem;
+--txl2:1.25rem;--tx2:1.5rem;--tx3:1.875rem;--tx4:2.25rem;
+--tx5:3rem;--tx6:3.75rem;
+--s1:.25rem;--s2:.5rem;--s3:.75rem;--s4:1rem;--s5:1.25rem;
+--s6:1.5rem;--s8:2rem;--s10:2.5rem;--s12:3rem;--s16:4rem;
+--cw:800px;--cww:1000px;--nh:50px;
+--rsm:8px;--rmd:12px;--rlg:16px;--rfl:9999px;
+--shsm:0 1px 2px rgba(44,42,40,.05);
+--shmd:0 4px 12px rgba(44,42,40,.08);
+--shlg:0 8px 24px rgba(44,42,40,.1);
+--eo:cubic-bezier(.16,1,.3,1);--ei:cubic-bezier(.65,0,.35,1);
+--df:150ms;--dn:300ms;--ds:500ms;--sd:120ms;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-snap-type:y proximity;scroll-behavior:smooth}
+body{font-family:var(--fb);font-size:var(--txb);color:var(--text);line-height:1.6;
+background:var(--bg);
+background-image:radial-gradient(ellipse at 20% 50%,rgba(42,123,155,.04) 0%,transparent 50%);
+overflow-x:hidden}
+pre,code{white-space:pre-wrap;word-break:break-word;overflow-x:hidden}
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:var(--rfl)}
+
+/* NAV */
+.nav{position:fixed;top:0;left:0;right:0;height:var(--nh);z-index:100;
+background:rgba(250,247,242,.92);backdrop-filter:blur(12px);
+border-bottom:1px solid var(--borderl)}
+.pbar{position:absolute;top:0;left:0;height:3px;background:var(--acc);width:0%;
+transition:width 100ms linear;border-radius:0 var(--rfl) var(--rfl) 0}
+.nav-inner{display:flex;align-items:center;justify-content:space-between;height:100%;
+padding:0 var(--s6);max-width:var(--cww);margin:0 auto}
+.nav-title{font-family:var(--fd);font-weight:700;font-size:var(--txsm);letter-spacing:-.01em}
+.nav-dots{display:flex;gap:var(--s2);align-items:center}
+.ndot{width:10px;height:10px;border-radius:50%;border:2px solid var(--textm);background:transparent;
+cursor:pointer;transition:all var(--dn) var(--eo)}
+.ndot:hover{border-color:var(--acc)}
+.ndot.active{border-color:var(--acc);background:var(--acc);box-shadow:0 0 0 3px var(--accl)}
+.ndot.visited{background:var(--acc);border-color:var(--acc)}
+
+/* MODULES */
+.mod{min-height:100dvh;min-height:100vh;scroll-snap-align:start;
+padding:var(--s16) var(--s6);padding-top:calc(var(--nh) + var(--s12))}
+.mc{max-width:var(--cw);margin:0 auto}
+.mhdr{margin-bottom:var(--s12)}
+.mnum{display:block;font-family:var(--fd);font-size:var(--tx6);font-weight:800;
+color:var(--acc);opacity:.15;line-height:1;margin-bottom:var(--s2)}
+.mtitle{font-family:var(--fd);font-size:var(--tx4);font-weight:700;line-height:1.15;margin-bottom:var(--s3)}
+.msub{font-size:var(--txl);color:var(--text2)}
+.screen{margin-bottom:var(--s16)}
+.sh{font-family:var(--fd);font-size:var(--tx2);font-weight:600;margin-bottom:var(--s6);line-height:1.3}
+p{margin-bottom:var(--s4)}p:last-child{margin-bottom:0}
+
+/* ANIMATIONS */
+.ai{opacity:0;transform:translateY(20px);
+transition:opacity var(--ds) var(--eo),transform var(--ds) var(--eo)}
+.ai.vis{opacity:1;transform:translateY(0)}
+.sg>.ai{transition-delay:calc(var(--si,0)*var(--sd))}
+
+/* TRANSLATION */
+.tb{display:grid;grid-template-columns:1fr 1fr;gap:0;border-radius:var(--rmd);
+overflow:visible;box-shadow:var(--shmd);margin:var(--s8) 0}
+.tcode{background:var(--bgcode);color:#CDD6F4;padding:var(--s6);font-family:var(--fm);
+font-size:var(--txsm);line-height:1.7;position:relative;overflow-x:hidden;
+border-radius:var(--rmd) 0 0 var(--rmd)}
+.tcode pre,.tcode code{white-space:pre-wrap;word-break:break-word;overflow-x:hidden}
+.ten{background:var(--surfw);padding:var(--s6);font-size:var(--txsm);line-height:1.7;
+border-left:3px solid var(--acc);border-radius:0 var(--rmd) var(--rmd) 0}
+.tlbl{display:block;font-size:var(--txs);text-transform:uppercase;letter-spacing:.1em;
+opacity:.5;margin-bottom:var(--s3);font-family:var(--fm)}
+.tl{padding:var(--s1) 0;border-bottom:1px solid var(--borderl);margin-bottom:var(--s2);font-size:var(--txsm)}
+.tl:last-child{border-bottom:none;margin-bottom:0}
+@media(max-width:768px){
+.tb{grid-template-columns:1fr}
+.tcode{border-radius:var(--rmd) var(--rmd) 0 0}
+.ten{border-left:none;border-top:3px solid var(--acc);border-radius:0 0 var(--rmd) var(--rmd)}}
+
+/* CALLOUT */
+.co{display:flex;gap:var(--s4);padding:var(--s5) var(--s6);border-radius:var(--rmd);margin:var(--s6) 0}
+.co-aha{background:var(--accl);border-left:4px solid var(--acc)}
+.co-warn{background:#FFF8E4;border-left:4px solid var(--a4)}
+.co-ok{background:var(--okl);border-left:4px solid var(--ok)}
+.co-icon{font-size:1.4rem;flex-shrink:0;margin-top:2px}
+.co-body strong{display:block;margin-bottom:var(--s1);font-family:var(--fd)}
+.co-body p{margin-bottom:0;font-size:var(--txsm)}
+
+/* PATTERN CARDS */
+.pcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:var(--s4);margin:var(--s6) 0}
+.pc{background:var(--surf);border:1px solid var(--border);border-radius:var(--rmd);padding:var(--s5);box-shadow:var(--shsm)}
+.pc-icon{font-size:1.5rem;margin-bottom:var(--s3)}
+.pc-title{font-family:var(--fm);font-size:var(--txsm);font-weight:600;color:var(--acc);margin-bottom:var(--s2)}
+.pc p{font-size:var(--txsm);color:var(--text2);margin-bottom:0}
+
+/* CHAT */
+.chat-win{background:var(--surf);border-radius:var(--rlg);box-shadow:var(--shlg);
+overflow:hidden;margin:var(--s8) 0;max-width:580px;margin-left:auto;margin-right:auto}
+.chat-hdr{background:var(--bgcode);padding:var(--s3) var(--s5);display:flex;align-items:center;gap:var(--s3)}
+.chat-hdr-title{color:#CDD6F4;font-family:var(--fm);font-size:var(--txsm);font-weight:600}
+.chat-macdots{display:flex;gap:6px}
+.chat-macdots span{width:10px;height:10px;border-radius:50%}
+.chat-macdots span:nth-child(1){background:#FF5F57}
+.chat-macdots span:nth-child(2){background:#FEBC2E}
+.chat-macdots span:nth-child(3){background:#28C840}
+.chat-msgs{padding:var(--s5);min-height:200px;max-height:360px;overflow-y:auto;
+display:flex;flex-direction:column;gap:var(--s3)}
+.chat-msg{display:flex;gap:var(--s3);align-items:flex-start}
+.chat-msg.r{flex-direction:row-reverse}
+.chat-av{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;
+justify-content:center;font-weight:700;font-size:var(--txsm);color:#fff;flex-shrink:0}
+.chat-bub{max-width:72%;background:var(--bg2);border-radius:var(--rmd);padding:var(--s3) var(--s4)}
+.chat-msg.r .chat-bub{background:var(--accl)}
+.chat-sndr{display:block;font-size:var(--txs);font-weight:600;margin-bottom:var(--s1);font-family:var(--fm)}
+.chat-bub p{font-size:var(--txsm);margin-bottom:0;line-height:1.5}
+.chat-typing{display:flex;gap:var(--s3);align-items:center;padding:var(--s2) var(--s5)}
+.chat-dots{display:flex;gap:4px;background:var(--bg2);padding:var(--s3) var(--s4);border-radius:var(--rmd)}
+.tdot{width:8px;height:8px;border-radius:50%;background:var(--textm);animation:tb 1.2s infinite}
+.tdot:nth-child(2){animation-delay:.2s}.tdot:nth-child(3){animation-delay:.4s}
+@keyframes tb{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-6px)}}
+.chat-ctrl{padding:var(--s3) var(--s5);border-top:1px solid var(--borderl);display:flex;gap:var(--s3)}
+
+/* FLOW */
+.flow-box{background:var(--surf);border-radius:var(--rlg);box-shadow:var(--shmd);padding:var(--s8);margin:var(--s8) 0}
+.flow-steps{display:flex;align-items:center;gap:var(--s3);flex-wrap:wrap;justify-content:center;margin-bottom:var(--s6)}
+.fstep{background:var(--bg2);border:2px solid var(--border);border-radius:var(--rmd);
+padding:var(--s4);text-align:center;min-width:100px;transition:all var(--dn) var(--eo)}
+.fstep.act{border-color:var(--acc);background:var(--accl);transform:scale(1.06);box-shadow:var(--shmd)}
+.fstep.done{border-color:var(--ok);background:var(--okl)}
+.fstep-icon{font-size:1.4rem;margin-bottom:var(--s2)}
+.fstep-lbl{font-family:var(--fm);font-size:var(--txs);font-weight:600;color:var(--text2)}
+.farrow{font-size:1.1rem;color:var(--textm);flex-shrink:0}
+.fdesc{text-align:center;font-size:var(--txsm);color:var(--text2);min-height:44px;
+padding:var(--s3);background:var(--bg2);border-radius:var(--rsm)}
+
+/* VEC VISUAL */
+.vvis{display:flex;margin:var(--s6) 0;border-radius:var(--rmd);overflow:hidden;
+box-shadow:var(--shmd);flex-wrap:wrap}
+.vcell{flex:1;min-width:48px;background:var(--surf);border:2px solid var(--border);
+padding:var(--s4) var(--s3);text-align:center;transition:all var(--dn) var(--eo)}
+.vcell.hi{background:var(--accl);border-color:var(--acc)}
+.vcell-v{font-family:var(--fm);font-size:var(--txl);font-weight:600}
+.vcell-i{font-family:var(--fm);font-size:var(--txs);color:var(--textm);margin-top:var(--s1)}
+
+/* QUIZ */
+.qbox{background:var(--surf);border-radius:var(--rlg);padding:var(--s8);box-shadow:var(--shmd);margin:var(--s8) 0}
+.qblock{margin-bottom:var(--s8)}
+.qq{font-family:var(--fd);font-size:var(--txl);font-weight:600;margin-bottom:var(--s4);line-height:1.3}
+.qopts{display:flex;flex-direction:column;gap:var(--s2)}
+.qopt{display:flex;align-items:center;gap:var(--s3);padding:var(--s3) var(--s4);
+border:2px solid var(--border);border-radius:var(--rsm);background:var(--surf);
+cursor:pointer;width:100%;text-align:left;font-size:var(--txsm);font-family:var(--fb);
+transition:border-color var(--df),background var(--df)}
+.qopt:hover:not(:disabled){border-color:var(--accm)}
+.qopt.sel{border-color:var(--acc);background:var(--accl)}
+.qopt.ok{border-color:var(--ok);background:var(--okl)}
+.qopt.no{border-color:var(--err);background:var(--errl)}
+.qopt:disabled{cursor:default}
+.qradio{width:18px;height:18px;border-radius:50%;border:2px solid var(--border);flex-shrink:0;transition:all var(--df)}
+.qopt.sel .qradio{border-color:var(--acc);background:var(--acc);box-shadow:inset 0 0 0 3px #fff}
+.qopt.ok .qradio{border-color:var(--ok);background:var(--ok);box-shadow:inset 0 0 0 3px #fff}
+.qopt.no .qradio{border-color:var(--err);background:var(--err);box-shadow:inset 0 0 0 3px #fff}
+.qfb{max-height:0;overflow:hidden;opacity:0;transition:max-height var(--dn),opacity var(--dn);
+border-radius:var(--rsm);font-size:var(--txsm)}
+.qfb.show{max-height:220px;opacity:1;padding:var(--s3);margin-top:var(--s2)}
+.qfb.ok{background:var(--okl);color:var(--ok)}
+.qfb.no{background:var(--errl);color:var(--err)}
+.qfb.warn{background:#FFF8E4;color:#8B6914}
+.qbtn{padding:var(--s3) var(--s6);border:none;border-radius:var(--rsm);cursor:pointer;
+font-family:var(--fb);font-size:var(--txsm);font-weight:600;transition:all var(--df)}
+.qbtn-check{background:var(--acc);color:#fff}.qbtn-check:hover{background:var(--acch)}
+.qbtn-reset{background:transparent;color:var(--text2);border:1px solid var(--border)}
+.qbtn-reset:hover{border-color:var(--acc);color:var(--acc)}
+
+/* STEP CARDS */
+.scards{display:flex;flex-direction:column;gap:var(--s4);margin:var(--s6) 0}
+.sc{display:flex;gap:var(--s4);padding:var(--s5);background:var(--surf);
+border:1px solid var(--border);border-radius:var(--rmd);box-shadow:var(--shsm)}
+.snum{width:36px;height:36px;border-radius:50%;background:var(--acc);color:#fff;
+display:flex;align-items:center;justify-content:center;font-family:var(--fm);
+font-weight:700;font-size:var(--txsm);flex-shrink:0}
+.sbody strong{display:block;font-family:var(--fd);font-size:var(--txb);margin-bottom:var(--s1)}
+.sbody p{font-size:var(--txsm);color:var(--text2);margin-bottom:0}
+
+/* HIGHLIGHT BOX */
+.hbox{background:var(--surf);border:1px solid var(--border);border-radius:var(--rmd);padding:var(--s6);margin:var(--s6) 0;box-shadow:var(--shsm)}
+
+/* BUTTONS */
+.btn{padding:var(--s2) var(--s5);border:none;border-radius:var(--rsm);cursor:pointer;
+font-family:var(--fb);font-size:var(--txsm);font-weight:600;transition:all var(--df)}
+.btnp{background:var(--acc);color:#fff}.btnp:hover{background:var(--acch)}
+.btns{background:transparent;color:var(--text2);border:1px solid var(--border)}
+.btns:hover{border-color:var(--acc);color:var(--acc)}
+
+/* TOOLTIP */
+.tt{text-decoration:underline dashed var(--accm);text-underline-offset:3px;cursor:pointer}
+#tip{position:fixed;z-index:9999;background:var(--bgcode);color:#CDD6F4;
+padding:var(--s3) var(--s4);border-radius:var(--rsm);font-size:var(--txs);
+max-width:260px;line-height:1.5;pointer-events:none;opacity:0;
+transition:opacity var(--df);box-shadow:var(--shlg);font-family:var(--fb)}
+#tip.vis{opacity:1}
+
+/* SYNTAX */
+.kw{color:#CBA6F7}.str{color:#A6E3A1}.fn{color:#89B4FA}.cm{color:#6C7086}
+.nm{color:#FAB387}.pr{color:#F9E2AF}.op{color:#94E2D5}.ty{color:#F38BA8}
+
+@media(max-width:768px){
+:root{--tx4:1.875rem;--tx5:2.25rem;--tx6:3rem}
+.pcards{grid-template-columns:1fr 1fr}
+.flow-steps{flex-direction:column}.farrow{transform:rotate(90deg)}}
+@media(max-width:480px){
+:root{--tx4:1.5rem;--tx5:1.875rem;--tx6:2.25rem}
+.mod{padding:var(--s8) var(--s4)}
+.pcards{grid-template-columns:1fr}
+.nav-title{display:none}}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="pbar" id="pbar"></div>
+  <div class="nav-inner">
+    <span class="nav-title">C++ Vector 完全指南</span>
+    <div class="nav-dots">
+      <button class="ndot" data-t="m1" title="什么是 vector？" onclick="goMod('m1')"></button>
+      <button class="ndot" data-t="m2" title="核心操作" onclick="goMod('m2')"></button>
+      <button class="ndot" data-t="m3" title="尺寸管理" onclick="goMod('m3')"></button>
+      <button class="ndot" data-t="m4" title="实战排序" onclick="goMod('m4')"></button>
+      <button class="ndot" data-t="m5" title="安全编程" onclick="goMod('m5')"></button>
+    </div>
+  </div>
+</nav>
+
+<div id="tip"></div>
+
+<!-- ══════════════════════════════
+     MODULE 1: 什么是 vector？
+══════════════════════════════ -->
+<section class="mod" id="m1" style="background:var(--bg)">
+<div class="mc">
+  <header class="mhdr ai">
+    <span class="mnum">01</span>
+    <h1 class="mtitle">什么是 <code style="font-family:var(--fm);color:var(--acc)">vector</code>？</h1>
+    <p class="msub">从固定数组的困境，到会"呼吸"的动态容器</p>
+  </header>
+
+  <section class="screen ai">
+    <h2 class="sh">先说困境</h2>
+    <p>假设你在写一道题：读取 <em>n</em> 个数字，但 <em>n</em> 是运行时才知道的。</p>
+    <p>用<span class="tt" data-t="普通数组：在代码里写 int a[100]，大括号里的数字必须在编译前确定，不能根据输入改变。就像订了固定大小储物柜——格子数从买时就固定了。">普通数组</span>，你得猜一个上限：</p>
+    <div style="background:var(--bgcode);border-radius:var(--rmd);padding:var(--s5);margin:var(--s4) 0;font-family:var(--fm);font-size:var(--txsm);color:#CDD6F4">
+<span class="ty">int</span> a[<span class="nm">100005</span>];  <span class="cm">// 猜上限——太小会越界，太大浪费内存</span>
+    </div>
+    <div class="co co-warn">
+      <span class="co-icon">⚠️</span>
+      <div class="co-body"><strong>痛点</strong>
+      <p>猜小了，<span class="tt" data-t="数组越界：访问数组里不存在的位置，轻则输出乱码，重则程序崩溃（RE）。竞赛中最常见的失分原因之一。">越界崩溃</span>；猜大了，占十几倍内存。而且你根本不该猜——<code>n</code> 是已知的！</p></div>
+    </div>
+    <p><span class="tt" data-t="vector：C++ 标准库的动态数组，写作 vector&lt;int&gt;。大小可在运行时决定并自动增长，是竞赛和工程中最常用的容器。">vector</span> 就是来解决这个问题的。它的大小可以<strong>运行时</strong>决定，随时<strong>自动增长</strong>。</p>
+  </section>
+
+  <!-- Group Chat -->
+  <section class="screen ai">
+    <h2 class="sh">固定数组 vs vector：一场对话</h2>
+    <p>想象你的程序在向两种存储方式求助——</p>
+    <div class="chat-win" id="c1">
+      <div class="chat-hdr">
+        <div class="chat-macdots"><span></span><span></span><span></span></div>
+        <span class="chat-hdr-title">程序内部频道</span>
+      </div>
+      <div class="chat-msgs" id="c1-msgs"></div>
+      <div class="chat-typing" id="c1-typ" style="display:none">
+        <div class="chat-av" id="c1-tav" style="background:#888">?</div>
+        <div class="chat-dots"><span class="tdot"></span><span class="tdot"></span><span class="tdot"></span></div>
+      </div>
+      <div class="chat-ctrl">
+        <button class="btn btnp" onclick="cn('c1')">下一条消息 →</button>
+        <button class="btn btns" onclick="cr('c1')">重播</button>
+      </div>
+    </div>
+    <div class="co co-aha">
+      <span class="co-icon">💡</span>
+      <div class="co-body"><strong>核心比喻</strong>
+      <p>vector 就像一个<strong>自动伸缩的书架</strong>——放一本书，多出一格；书全取走，自动收缩。永远不需要提前预订空间。</p></div>
+    </div>
+  </section>
+
+  <!-- Code Translation -->
+  <section class="screen ai">
+    <h2 class="sh">最常见的写法</h2>
+    <p>这是 <code>vector.cpp</code> 里读取 n 个数并存储的核心片段：</p>
+    <div class="tb ai">
+      <div class="tcode">
+        <span class="tlbl">CODE — vector.cpp</span>
+        <pre><code><span class="ty">int</span> n;
+<span class="fn">cin</span> >> n;
+
+<span class="fn">vector</span>&lt;<span class="ty">int</span>&gt; a(n);
+<span class="kw">for</span> (<span class="ty">int</span> i = <span class="nm">0</span>; i &lt; n; i++) {
+    <span class="fn">cin</span> >> a[i];
+}</code></pre>
+      </div>
+      <div class="ten">
+        <span class="tlbl">PLAIN CHINESE</span>
+        <div>
+          <p class="tl">声明整数变量 n</p>
+          <p class="tl">从输入读取 n 的值（比如 5）</p>
+          <p class="tl">创建能存 n 个整数的 vector，大小此刻确定</p>
+          <p class="tl">循环 n 次，i 从 0 到 n-1</p>
+          <p class="tl">每次把一个数字读进第 i 个格子</p>
+        </div>
+      </div>
+    </div>
+    <p style="font-size:var(--txsm);color:var(--text2)">关键点：<code>vector&lt;int&gt; a(<strong>n</strong>)</code> 里的 <code>n</code> 可以是运行时变量，普通数组做不到这一点。</p>
+  </section>
+
+  <!-- Quiz 1 -->
+  <section class="screen ai" id="q1">
+    <h2 class="sh">小测验</h2>
+    <div class="qbox">
+      <div class="qblock" data-c="ob"
+           data-ec="正确！vector 的核心优势就是大小可以在运行时决定，而不是编译时写死——这正是 vector&lt;int&gt; a(n) 合法的原因。"
+           data-ew="普通数组 int a[n] 的 n 必须是编译期常量，但 vector 没有这个限制。">
+        <p class="qq">你在做一道题，输入数据量 n 由用户决定，最多可达 10^6。最合适的存储方式是？</p>
+        <div class="qopts">
+          <button class="qopt" data-v="oa" onclick="sel(this)"><div class="qradio"></div><span>用 <code>int a[1000000]</code>——提前分配最大空间</span></button>
+          <button class="qopt" data-v="ob" onclick="sel(this)"><div class="qradio"></div><span>用 <code>vector&lt;int&gt; a(n)</code>——按实际输入大小分配</span></button>
+          <button class="qopt" data-v="oc" onclick="sel(this)"><div class="qradio"></div><span>用全局数组——全局数组没有大小限制</span></button>
+        </div>
+        <div class="qfb" id="q1-0-fb"></div>
+      </div>
+      <div class="qblock" data-c="oc"
+           data-ec="正确！n 在运行前是未知的，只有读到输入后才确定。vector 正是为此设计的。"
+           data-ew="如果 n 是用户输入的，代码还没运行时怎么知道 n 是多少？这就是需要动态大小的原因。">
+        <p class="qq">为什么 <code>vector&lt;int&gt; a(n)</code> 比 <code>int a[100]</code> 更适合"输入数量不定"的题？</p>
+        <div class="qopts">
+          <button class="qopt" data-v="oa" onclick="sel(this)"><div class="qradio"></div><span>vector 速度更快</span></button>
+          <button class="qopt" data-v="ob" onclick="sel(this)"><div class="qradio"></div><span>vector 不用导入头文件</span></button>
+          <button class="qopt" data-v="oc" onclick="sel(this)"><div class="qradio"></div><span>vector 大小可以是运行时变量，普通数组的大小必须在编译前确定</span></button>
+        </div>
+        <div class="qfb" id="q1-1-fb"></div>
+      </div>
+      <div style="display:flex;gap:var(--s3);flex-wrap:wrap;margin-top:var(--s4)">
+        <button class="qbtn qbtn-check" onclick="chk('q1')">检查答案</button>
+        <button class="qbtn qbtn-reset" onclick="rst('q1')">重新作答</button>
+      </div>
+    </div>
+  </section>
+</div>
+</section>
+
+<!-- ══════════════════════════════
+     MODULE 2: 核心操作
+══════════════════════════════ -->
+<section class="mod" id="m2" style="background:var(--bg2)">
+<div class="mc">
+  <header class="mhdr ai">
+    <span class="mnum">02</span>
+    <h1 class="mtitle">核心操作工具箱</h1>
+    <p class="msub">push_back、pop_back、front、back——操作 vector 的四把瑞士军刀</p>
+  </header>
+
+  <section class="screen ai">
+    <h2 class="sh">想象一叠扑克牌</h2>
+    <p>把 vector 想成一叠<strong>只能从右侧加减</strong>的扑克牌：</p>
+    <div class="pcards sg">
+      <div class="pc ai"><div class="pc-icon">➕</div><div class="pc-title">push_back(x)</div><p>从右侧（尾部）放入一张牌 x</p></div>
+      <div class="pc ai"><div class="pc-icon">➖</div><div class="pc-title">pop_back()</div><p>从右侧（尾部）取走最后一张</p></div>
+      <div class="pc ai"><div class="pc-icon">👁️</div><div class="pc-title">front()</div><p>看第一张的值，但不拿走它</p></div>
+      <div class="pc ai"><div class="pc-icon">🔍</div><div class="pc-title">back()</div><p>看最后一张的值，但不拿走它</p></div>
+    </div>
+  </section>
+
+  <!-- Code Translation -->
+  <section class="screen ai">
+    <h2 class="sh">代码 ↔ 中文对照</h2>
+    <p>这是 <code>vector2.cpp</code> 的前半段：</p>
+    <div class="tb ai">
+      <div class="tcode">
+        <span class="tlbl">CODE — vector2.cpp</span>
+        <pre><code><span class="fn">vector</span>&lt;<span class="ty">int</span>&gt; v = {<span class="nm">1</span>, <span class="nm">2</span>, <span class="nm">3</span>};
+
+v.<span class="fn">push_back</span>(<span class="nm">4</span>);
+
+v.<span class="fn">pop_back</span>();
+
+<span class="fn">cout</span> &lt;&lt; v.<span class="fn">front</span>() &lt;&lt; <span class="str">"\n"</span>;
+
+<span class="fn">cout</span> &lt;&lt; v.<span class="fn">back</span>() &lt;&lt; <span class="str">"\n"</span>;</code></pre>
+      </div>
+      <div class="ten">
+        <span class="tlbl">PLAIN CHINESE</span>
+        <div>
+          <p class="tl">创建 vector，初始内容是 {1, 2, 3}</p>
+          <p class="tl">在尾部追加 4 → 变成 {1, 2, 3, 4}</p>
+          <p class="tl">删除尾部元素 → 回到 {1, 2, 3}</p>
+          <p class="tl">打印第一个元素：输出 1，但 1 仍留在里面</p>
+          <p class="tl">打印最后一个元素：输出 3，同样不删除它</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Interactive Vector -->
+  <section class="screen ai">
+    <h2 class="sh">动手看变化</h2>
+    <p>点击按钮，观察 vector 内容的实时变化：</p>
+    <div class="hbox">
+      <p id="vlbl" style="font-family:var(--fm);font-size:var(--txsm);color:var(--text2);margin-bottom:var(--s4)">当前：v = {1, 2, 3}　size = 3</p>
+      <div class="vvis" id="vv"></div>
+      <div style="margin-top:var(--s4);display:flex;gap:var(--s3);flex-wrap:wrap">
+        <button class="btn btnp" onclick="vop('push',9)">push_back(9)</button>
+        <button class="btn btnp" onclick="vop('pop')">pop_back()</button>
+        <button class="btn btns" onclick="vop('reset')">重置</button>
+      </div>
+      <p id="vmsg" style="margin-top:var(--s3);font-size:var(--txsm);color:var(--text2);min-height:1.4em"></p>
+    </div>
+    <div class="co co-warn">
+      <span class="co-icon">⚠️</span>
+      <div class="co-body"><strong>pop_back 对空 vector 的后果</strong>
+      <p>如果 vector 已经是空的还调用 <code>pop_back()</code>，结果是<span class="tt" data-t="未定义行为（Undefined Behavior，UB）：程序可能崩溃、输出乱码、或者偶尔"正常"运行——但你无法预测。C++ 里最危险的陷阱之一。">未定义行为</span>——轻则乱码，重则崩溃。</p></div>
+    </div>
+  </section>
+
+  <!-- Quiz 2 -->
+  <section class="screen ai" id="q2">
+    <h2 class="sh">小测验</h2>
+    <div class="qbox">
+      <div class="qblock" data-c="ob"
+           data-ec="正确！pop_back() 的返回类型是 void——它只删除，不返回值。想先知道末尾值再删除，应先 back() 再 pop_back()。"
+           data-ew="注意：pop_back() 返回 void，不返回被删元素。这是 C++ vector 的设计——编译器会直接报错。">
+        <p class="qq">你写了 <code>int x = v.pop_back();</code>，会发生什么？</p>
+        <div class="qopts">
+          <button class="qopt" data-v="oa" onclick="sel(this)"><div class="qradio"></div><span>x 等于被删除的末尾元素</span></button>
+          <button class="qopt" data-v="ob" onclick="sel(this)"><div class="qradio"></div><span>编译报错——pop_back() 没有返回值</span></button>
+          <button class="qopt" data-v="oc" onclick="sel(this)"><div class="qradio"></div><span>x 等于 0</span></button>
+        </div>
+        <div class="qfb" id="q2-0-fb"></div>
+      </div>
+      <div class="qblock" data-c="oc"
+           data-ec="对！front() 和 back() 只是"看"，不会修改 vector。就像用眼睛看书架第一本书——书还在原位。"
+           data-ew="front() 只是读取，不会删除任何元素。"查看"和"删除"是两个独立操作。">
+        <p class="qq">调用 <code>v.front()</code> 之后，v 里还有几个元素？（调用前有 3 个）</p>
+        <div class="qopts">
+          <button class="qopt" data-v="oa" onclick="sel(this)"><div class="qradio"></div><span>2 个——front 取走了第一个元素</span></button>
+          <button class="qopt" data-v="ob" onclick="sel(this)"><div class="qradio"></div><span>0 个——front 清空了所有元素</span></button>
+          <button class="qopt" data-v="oc" onclick="sel(this)"><div class="qradio"></div><span>仍然 3 个——front 只读取，不删除</span></button>
+        </div>
+        <div class="qfb" id="q2-1-fb"></div>
+      </div>
+      <div style="display:flex;gap:var(--s3);flex-wrap:wrap;margin-top:var(--s4)">
+        <button class="qbtn qbtn-check" onclick="chk('q2')">检查答案</button>
+        <button class="qbtn qbtn-reset" onclick="rst('q2')">重新作答</button>
+      </div>
+    </div>
+  </section>
+</div>
+</section>
+
+<!-- ══════════════════════════════
+     MODULE 3: 尺寸管理
+══════════════════════════════ -->
+<section class="mod" id="m3" style="background:var(--bg)">
+<div class="mc">
+  <header class="mhdr ai">
+    <span class="mnum">03</span>
+    <h1 class="mtitle">尺寸管理</h1>
+    <p class="msub">size、empty、resize、clear——掌控 vector 的"体积"</p>
+  </header>
+
+  <section class="screen ai">
+    <h2 class="sh">像管理仓库一样管理 vector</h2>
+    <p>把 vector 想成一个仓库：你需要知道里面有多少货、判断是否为空、扩容或清仓。</p>
+    <div class="pcards sg">
+      <div class="pc ai"><div class="pc-icon">📦</div><div class="pc-title">size()</div><p>返回当前元素数量——仓库里有几箱货？</p></div>
+      <div class="pc ai"><div class="pc-icon">🔍</div><div class="pc-title">empty()</div><p>仓库空了吗？返回 true / false</p></div>
+      <div class="pc ai"><div class="pc-icon">📐</div><div class="pc-title">resize(k)</div><p>把格子数调整到 k，新格子自动填 0</p></div>
+      <div class="pc ai"><div class="pc-icon">🗑️</div><div class="pc-title">clear()</div><p>清空所有货物，size 变为 0</p></div>
+    </div>
+  </section>
+
+  <section class="screen ai">
+    <h2 class="sh">代码 ↔ 中文对照</h2>
+    <div class="tb ai">
+      <div class="tcode">
+        <span class="tlbl">CODE — vector2.cpp</span>
+        <pre><code><span class="fn">cout</span> &lt;&lt; v.<span class="fn">size</span>() &lt;&lt; <span class="str">"\n"</span>;
+
+<span class="fn">cout</span> &lt;&lt; v.<span class="fn">empty</span>() &lt;&lt; <span class="str">"\n"</span>;
+
+<span class="fn">cout</span> &lt;&lt; !v.<span class="fn">empty</span>() &lt;&lt; <span class="str">"\n"</span>;
+
+v.<span class="fn">resize</span>(<span class="nm">10</span>);
+
+<span class="fn">cout</span> &lt;&lt; v.<span class="fn">size</span>() &lt;&lt; <span class="str">"\n"</span>;
+
+v.<span class="fn">clear</span>();</code></pre>
+      </div>
+      <div class="ten">
+        <span class="tlbl">PLAIN CHINESE</span>
+        <div>
+          <p class="tl">打印元素数量：当前是 3，输出 3</p>
+          <p class="tl">判断是否为空：有元素，输出 0（false）</p>
+          <p class="tl">取反判断"不为空"：输出 1（true）——更常用的写法</p>
+          <p class="tl">把大小调整为 10，多出的 7 个位置自动补 0</p>
+          <p class="tl">验证：现在 size() 返回 10</p>
+          <p class="tl">清空所有元素，size 变为 0</p>
+        </div>
+      </div>
+    </div>
+    <div class="co co-aha">
+      <span class="co-icon">💡</span>
+      <div class="co-body"><strong>!v.empty() 比 v.size() > 0 更 C++ 风格</strong>
+      <p>两者等价，但 <code>!v.empty()</code> 更语义化，也是多数<span class="tt" data-t="代码审查（Code Review）：队友或同事检查你代码逻辑和风格的过程，确认没有 bug 且易读。">代码审查</span>推荐的写法。</p></div>
+    </div>
+  </section>
+
+  <section class="screen ai">
+    <h2 class="sh">resize 的三种情况</h2>
+    <div class="scards sg">
+      <div class="sc ai"><div class="snum">①</div><div class="sbody"><strong>扩大（新 &gt; 旧）</strong><p>多出的位置自动用 0 填充。{1,2,3} resize(6) → {1,2,3,0,0,0}</p></div></div>
+      <div class="sc ai"><div class="snum">②</div><div class="sbody"><strong>缩小（新 &lt; 旧）</strong><p>超出部分被丢弃。{1,2,3,4,5} resize(3) → {1,2,3}</p></div></div>
+      <div class="sc ai"><div class="snum">③</div><div class="sbody"><strong>不变（新 = 旧）</strong><p>什么都不做，此操作是<span class="tt" data-t="幂等（idempotent）：执行一次和执行多次效果相同。">幂等</span>的</p></div></div>
+    </div>
+  </section>
+
+  <!-- Quiz 3 -->
+  <section class="screen ai" id="q3">
+    <h2 class="sh">小测验</h2>
+    <div class="qbox">
+      <div class="qblock" data-c="ob"
+           data-ec="正确！resize(10) 在尾部追加 7 个 0，原有元素保留。v = {1,2,3,0,0,0,0,0,0,0}，索引 1 的值还是 2。"
+           data-ew="resize 只在尾部扩容，不会清零原有元素。{1,2,3} resize(10) → {1,2,3,0,...}，v[1] 还是 2。">
+        <p class="qq">执行完 <code>v.resize(10);</code> 后，<code>v[1]</code> 是什么？（初始 v = {1,2,3}）</p>
+        <div class="qopts">
+          <button class="qopt" data-v="oa" onclick="sel(this)"><div class="qradio"></div><span>0——resize 把所有元素清零了</span></button>
+          <button class="qopt" data-v="ob" onclick="sel(this)"><div class="qradio"></div><span>2——原有元素保留，只有新增位置补 0</span></button>
+          <button class="qopt" data-v="oc" onclick="sel(this)"><div class="qradio"></div><span>越界，resize(10) 破坏了原来的索引</span></button>
+        </div>
+        <div class="qfb" id="q3-0-fb"></div>
+      </div>
+      <div class="qblock" data-c="oa"
+           data-ec="完全正确！clear() 后 empty() 为 true，!v.empty() 为 false，走 else 分支输出"vector 已空"。这正是代码里的安全检查。"
+           data-ew="clear() 之后 empty() 变成 true，!v.empty() 就是 false，if 条件不满足，执行 else 里的语句。">
+        <p class="qq">调用 <code>v.clear()</code> 后，<code>if (!v.empty()) { cout &lt;&lt; v[1]; } else { cout &lt;&lt; "vector 已空"; }</code>，输出什么？</p>
+        <div class="qopts">
+          <button class="qopt" data-v="oa" onclick="sel(this)"><div class="qradio"></div><span>"vector 已空"</span></button>
+          <button class="qopt" data-v="ob" onclick="sel(this)"><div class="qradio"></div><span>0</span></button>
+          <button class="qopt" data-v="oc" onclick="sel(this)"><div class="qradio"></div><span>程序崩溃</span></button>
+        </div>
+        <div class="qfb" id="q3-1-fb"></div>
+      </div>
+      <div style="display:flex;gap:var(--s3);flex-wrap:wrap;margin-top:var(--s4)">
+        <button class="qbtn qbtn-check" onclick="chk('q3')">检查答案</button>
+        <button class="qbtn qbtn-reset" onclick="rst('q3')">重新作答</button>
+      </div>
+    </div>
+  </section>
+</div>
+</section>
+
+<!-- ══════════════════════════════
+     MODULE 4: 实战排序
+══════════════════════════════ -->
+<section class="mod" id="m4" style="background:var(--bg2)">
+<div class="mc">
+  <header class="mhdr ai">
+    <span class="mnum">04</span>
+    <h1 class="mtitle">实战：读取 → 排序 → 输出</h1>
+    <p class="msub">逐步追踪 vector.cpp，看每一行背后发生了什么</p>
+  </header>
+
+  <!-- Flow Animation -->
+  <section class="screen ai">
+    <h2 class="sh">一次完整的程序执行</h2>
+    <p>假设输入：<code>5</code>（n），然后 <code>3 1 4 1 5</code>（5 个数字）</p>
+    <div class="flow-box">
+      <div class="flow-steps">
+        <div class="fstep" id="fs1"><div class="fstep-icon">📥</div><div class="fstep-lbl">读取 n</div></div>
+        <div class="farrow">→</div>
+        <div class="fstep" id="fs2"><div class="fstep-icon">🗄️</div><div class="fstep-lbl">建 vector</div></div>
+        <div class="farrow">→</div>
+        <div class="fstep" id="fs3"><div class="fstep-icon">📝</div><div class="fstep-lbl">读入数组</div></div>
+        <div class="farrow">→</div>
+        <div class="fstep" id="fs4"><div class="fstep-icon">🔀</div><div class="fstep-lbl">sort 排序</div></div>
+        <div class="farrow">→</div>
+        <div class="fstep" id="fs5"><div class="fstep-icon">📤</div><div class="fstep-lbl">输出结果</div></div>
+      </div>
+      <div class="fdesc" id="fdesc">点击"下一步"开始追踪执行过程</div>
+      <div style="margin-top:var(--s4);display:flex;gap:var(--s3)">
+        <button class="btn btnp" onclick="fnxt()">下一步 →</button>
+        <button class="btn btns" onclick="frst()">重置</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Full Code Translation -->
+  <section class="screen ai">
+    <h2 class="sh">完整程序逐行解读</h2>
+    <div class="tb ai">
+      <div class="tcode">
+        <span class="tlbl">CODE — vector.cpp（完整）</span>
+        <pre><code><span class="kw">#include</span> <span class="str">&lt;bits/stdc++.h&gt;</span>
+<span class="kw">using namespace</span> std;
+
+<span class="kw">typedef</span> <span class="ty">long long</span> ll;
+<span class="kw">const</span> <span class="ty">int</span> MOD = <span class="nm">1e9</span> + <span class="nm">7</span>;
+<span class="ty">int</span> <span class="fn">main</span>() {
+    ios::sync_with_stdio(<span class="kw">false</span>);
+    cin.tie(<span class="kw">nullptr</span>);
+
+    <span class="ty">int</span> n;
+    <span class="fn">cin</span> >> n;
+
+    <span class="fn">vector</span>&lt;<span class="ty">int</span>&gt; a(n);
+    <span class="kw">for</span> (<span class="ty">int</span> i = <span class="nm">0</span>; i &lt; n; i++) {
+        <span class="fn">cin</span> >> a[i];
+    }
+    <span class="fn">sort</span>(a.<span class="fn">begin</span>(), a.<span class="fn">end</span>());
+
+    <span class="kw">for</span> (<span class="ty">int</span> x : a) {
+        <span class="fn">cout</span> &lt;&lt; x &lt;&lt; <span class="str">" "</span>;
+    }
+    <span class="fn">cout</span> &lt;&lt; <span class="str">"\n"</span>;
+    <span class="kw">return</span> <span class="nm">0</span>;
+}</code></pre>
+      </div>
+      <div class="ten">
+        <span class="tlbl">PLAIN CHINESE</span>
+        <div>
+          <p class="tl">一行引入所有 C++ 标准库，竞赛模板必备</p>
+          <p class="tl">直接用标准库里的名字，不用写 std:: 前缀</p>
+          <p class="tl">给 long long 起别名 ll，省打字</p>
+          <p class="tl">定义取模常数 10^9+7（本题没用到，但是模板保留）</p>
+          <p class="tl">程序入口</p>
+          <p class="tl">关闭 cin/cout 与 C 风格 I/O 的同步，大幅提速</p>
+          <p class="tl">解绑 cin 和 cout，进一步加速输入</p>
+          <p class="tl">声明整数 n</p>
+          <p class="tl">读取 n 的值</p>
+          <p class="tl">创建含 n 个整数的 vector</p>
+          <p class="tl">循环 n 次，逐个读入元素</p>
+          <p class="tl">对 vector 排序，begin/end 标记首尾位置</p>
+          <p class="tl">范围 for 循环，x 依次取每个元素值</p>
+          <p class="tl">打印每个元素，后加空格</p>
+          <p class="tl">输出换行，刷新缓冲区</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="screen ai">
+    <h2 class="sh">sort 为什么要 begin() 和 end()？</h2>
+    <p><code>sort</code> 需要知道"从哪里排到哪里"。vector 提供了两个<span class="tt" data-t="迭代器（iterator）：像书签一样指向容器里某个位置的对象。begin() 指向第一个元素，end() 指向最后元素之后的"哨兵"位置。">迭代器</span>：</p>
+    <div class="scards sg">
+      <div class="sc ai"><div class="snum">▶</div><div class="sbody"><strong>a.begin()</strong><p>指向第一个元素，就像"从第 0 格开始"</p></div></div>
+      <div class="sc ai"><div class="snum">⏹</div><div class="sbody"><strong>a.end()</strong><p>指向最后元素<strong>之后</strong>的位置（哨兵），意思是"排到这里为止"</p></div></div>
+    </div>
+    <div class="co co-aha">
+      <span class="co-icon">💡</span>
+      <div class="co-body"><strong>左闭右开 [begin, end)</strong>
+      <p>C++ 的惯例：区间包含 begin，但不包含 end。这样处理空 vector 时（begin == end）逻辑自然一致，不需要特殊判断。</p></div>
+    </div>
+    <div class="co co-aha">
+      <span class="co-icon">🗣️</span>
+      <div class="co-body"><strong>给 AI 的精确指令</strong>
+      <p>想让 AI 对 vector 排序，直接说："用 <code>sort(a.begin(), a.end())</code> 对 a 升序排序"——AI 会准确理解并生成正确代码。</p></div>
+    </div>
+  </section>
+
+  <!-- Quiz 4 -->
+  <section class="screen ai" id="q4">
+    <h2 class="sh">小测验</h2>
+    <div class="qbox">
+      <div class="qblock" data-c="ob"
+           data-ec="正确！sort 后 a = {1,1,3,4,5}，范围 for 循环依次输出每个元素，结果是 1 1 3 4 5。"
+           data-ew="sort(a.begin(), a.end()) 是升序排序。3 1 4 1 5 排序后变成 1 1 3 4 5，不是原始顺序也不是降序。">
+        <p class="qq">输入 n=5，数字为 3 1 4 1 5，程序执行完毕后输出什么？</p>
+        <div class="qopts">
+          <button class="qopt" data-v="oa" onclick="sel(this)"><div class="qradio"></div><span>3 1 4 1 5（原始顺序）</span></button>
+          <button class="qopt" data-v="ob" onclick="sel(this)"><div class="qradio"></div><span>1 1 3 4 5（升序）</span></button>
+          <button class="qopt" data-v="oc" onclick="sel(this)"><div class="qradio"></div><span>5 4 3 1 1（降序）</span></button>
+        </div>
+        <div class="qfb" id="q4-0-fb"></div>
+      </div>
+      <div class="qblock" data-c="oa"
+           data-ec="正确！这两行是竞赛中标准的 I/O 加速写法，当输入数据量很大时效果显著，可避免超时（TLE）。"
+           data-ew="这两行是 I/O 加速。sync_with_stdio(false) 关闭与 C 风格 scanf 的同步，cin.tie(nullptr) 解除 cin/cout 自动冲刷绑定——大数据量输入时快很多。">
+        <p class="qq"><code>ios::sync_with_stdio(false)</code> 和 <code>cin.tie(nullptr)</code> 的作用是什么？</p>
+        <div class="qopts">
+          <button class="qopt" data-v="oa" onclick="sel(this)"><div class="qradio"></div><span>加速 cin/cout，大数据量时避免超时（TLE）</span></button>
+          <button class="qopt" data-v="ob" onclick="sel(this)"><div class="qradio"></div><span>防止数组越界</span></button>
+          <button class="qopt" data-v="oc" onclick="sel(this)"><div class="qradio"></div><span>声明使用标准库</span></button>
+        </div>
+        <div class="qfb" id="q4-1-fb"></div>
+      </div>
+      <div style="display:flex;gap:var(--s3);flex-wrap:wrap;margin-top:var(--s4)">
+        <button class="qbtn qbtn-check" onclick="chk('q4')">检查答案</button>
+        <button class="qbtn qbtn-reset" onclick="rst('q4')">重新作答</button>
+      </div>
+    </div>
+  </section>
+</div>
+</section>
+
+<!-- ══════════════════════════════
+     MODULE 5: 安全编程
+══════════════════════════════ -->
+<section class="mod" id="m5" style="background:var(--bg)">
+<div class="mc">
+  <header class="mhdr ai">
+    <span class="mnum">05</span>
+    <h1 class="mtitle">安全编程与常见陷阱</h1>
+    <p class="msub">避免竞赛中 RE 和 WA 的关键习惯</p>
+  </header>
+
+  <section class="screen ai">
+    <h2 class="sh">访问前先确认"有货"</h2>
+    <p>这是 vector2.cpp 末尾最重要的模式：</p>
+    <div class="tb ai">
+      <div class="tcode">
+        <span class="tlbl">CODE — vector2.cpp（安全检查）</span>
+        <pre><code>v.<span class="fn">clear</span>();
+
+<span class="kw">if</span> (!v.<span class="fn">empty</span>()) {
+    <span class="fn">cout</span> &lt;&lt; v[<span class="nm">1</span>] &lt;&lt; <span class="str">"\n"</span>;
+} <span class="kw">else</span> {
+    <span class="fn">cout</span> &lt;&lt; <span class="str">"vector 已空\n"</span>;
+}</code></pre>
+      </div>
+      <div class="ten">
+        <span class="tlbl">PLAIN CHINESE</span>
+        <div>
+          <p class="tl">清空所有元素</p>
+          <p class="tl">安全门：先检查是不是空的</p>
+          <p class="tl">只有非空才访问，防止越界崩溃</p>
+          <p class="tl">——</p>
+          <p class="tl">如果为空，输出提示</p>
+          <p class="tl">← 这才是会被执行的分支（v 已被 clear）</p>
+        </div>
+      </div>
+    </div>
+    <div class="co co-warn">
+      <span class="co-icon">⚠️</span>
+      <div class="co-body"><strong>竞赛第一杀手：未检查的越界访问</strong>
+      <p>访问 <code>v[i]</code> 时，若 i ≥ v.size() 或 v 为空，就是<span class="tt" data-t="运行时错误（Runtime Error，RE）：程序编译通过，但运行中崩溃。竞赛提交后显示 RE，常见原因是数组越界、访问空 vector、除以零等。">运行时错误（RE）</span>。编译器不会警告，只会在评测时爆炸。</p></div>
+    </div>
+  </section>
+
+  <!-- Chat: dangerous operation -->
+  <section class="screen ai">
+    <h2 class="sh">危险操作的内部对话</h2>
+    <p>想象程序运行时各部分在"沟通"——下面是一段缺少安全检查的代码内部发生了什么：</p>
+    <div class="chat-win" id="c2">
+      <div class="chat-hdr">
+        <div class="chat-macdots"><span></span><span></span><span></span></div>
+        <span class="chat-hdr-title">程序执行日志</span>
+      </div>
+      <div class="chat-msgs" id="c2-msgs"></div>
+      <div class="chat-typing" id="c2-typ" style="display:none">
+        <div class="chat-av" id="c2-tav" style="background:#888">?</div>
+        <div class="chat-dots"><span class="tdot"></span><span class="tdot"></span><span class="tdot"></span></div>
+      </div>
+      <div class="chat-ctrl">
+        <button class="btn btnp" onclick="cn('c2')">下一条消息 →</button>
+        <button class="btn btns" onclick="cr('c2')">重播</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Quick Ref Cards -->
+  <section class="screen ai">
+    <h2 class="sh">竞赛速查表</h2>
+    <p>记住这些模式，可以避免 90% 的 vector 相关 bug：</p>
+    <div class="pcards sg">
+      <div class="pc ai" style="border-color:var(--ok)"><div class="pc-icon">✅</div><div class="pc-title" style="color:var(--ok)">访问前检查</div><p><code>if (!v.empty())</code> 或 <code>if (i &lt; v.size())</code></p></div>
+      <div class="pc ai" style="border-color:var(--ok)"><div class="pc-icon">✅</div><div class="pc-title" style="color:var(--ok)">排序模板</div><p><code>sort(a.begin(), a.end())</code></p></div>
+      <div class="pc ai" style="border-color:var(--ok)"><div class="pc-icon">✅</div><div class="pc-title" style="color:var(--ok)">I/O 加速</div><p><code>ios::sync_with_stdio(false); cin.tie(nullptr);</code></p></div>
+      <div class="pc ai" style="border-color:var(--err)"><div class="pc-icon">❌</div><div class="pc-title" style="color:var(--err)">对空 pop_back</div><p>空 vector 调 pop_back() → UB / RE</p></div>
+      <div class="pc ai" style="border-color:var(--err)"><div class="pc-icon">❌</div><div class="pc-title" style="color:var(--err)">越界访问</div><p>v[v.size()] 或 v[-1] → RE / UB</p></div>
+      <div class="pc ai" style="border-color:var(--err)"><div class="pc-icon">❌</div><div class="pc-title" style="color:var(--err)">忘记 I/O 加速</div><p>大数据量 cin 很慢 → TLE</p></div>
+    </div>
+  </section>
+
+  <!-- Final Quiz -->
+  <section class="screen ai" id="q5">
+    <h2 class="sh">终极测验</h2>
+    <div class="qbox">
+      <div class="qblock" data-c="oc"
+           data-ec="对！先用 empty() 检查，空的话 back() 和 pop_back() 都不能调用。只有确认非空，才能安全操作。"
+           data-ew="直接调用 back() 或 pop_back() 在空 vector 上会导致 UB 或崩溃。必须先用 empty() 检查。">
+        <p class="qq">你想写：如果 vector 非空，删除最后一个元素并返回它；否则返回 -1。第一步应该做什么？</p>
+        <div class="qopts">
+          <button class="qopt" data-v="oa" onclick="sel(this)"><div class="qradio"></div><span>直接调用 v.back() 获取末尾值</span></button>
+          <button class="qopt" data-v="ob" onclick="sel(this)"><div class="qradio"></div><span>直接调用 v.pop_back() 删除末尾</span></button>
+          <button class="qopt" data-v="oc" onclick="sel(this)"><div class="qradio"></div><span>用 v.empty() 检查是否为空，再决定下一步</span></button>
+        </div>
+        <div class="qfb" id="q5-0-fb"></div>
+      </div>
+      <div class="qblock" data-c="ob"
+           data-ec="正确！v[v.size()] 是越界访问，合法索引是 0 到 size()-1。能编译，但运行时崩溃，评测机返回 RE。"
+           data-ew="越界不是编译错误——C++ 不检查数组越界。也不是 WA——WA 是结果算错但程序没崩。越界通常是 RE。">
+        <p class="qq">你提交一道题，评测机返回 RE。代码里有 <code>cout &lt;&lt; v[v.size()];</code>，这行代码是 RE 的可能原因吗？</p>
+        <div class="qopts">
+          <button class="qopt" data-v="oa" onclick="sel(this)"><div class="qradio"></div><span>不是——能正常编译，肯定没问题</span></button>
+          <button class="qopt" data-v="ob" onclick="sel(this)"><div class="qradio"></div><span>是的——v[v.size()] 越界，合法索引是 0 到 size()-1</span></button>
+          <button class="qopt" data-v="oc" onclick="sel(this)"><div class="qradio"></div><span>不是——这会导致 WA，不是 RE</span></button>
+        </div>
+        <div class="qfb" id="q5-1-fb"></div>
+      </div>
+      <div class="qblock" data-c="oa"
+           data-ec="完全正确！这是最精确的描述方式。AI 看到这句话能立刻生成正确代码，不会产生歧义。"
+           data-ew="模糊的指令（"对 a 排序"）可能让 AI 猜测写法，有时会生成错误的 sort(a, a+n)（对 vector 无效）。给出精确写法更可靠。">
+        <p class="qq">你想让 AI 把 vector a 按升序排列，哪个指令最准确？</p>
+        <div class="qopts">
+          <button class="qopt" data-v="oa" onclick="sel(this)"><div class="qradio"></div><span>用 <code>sort(a.begin(), a.end())</code> 对 a 升序排序</span></button>
+          <button class="qopt" data-v="ob" onclick="sel(this)"><div class="qradio"></div><span>对 a 进行排序（让 AI 自己决定写法）</span></button>
+          <button class="qopt" data-v="oc" onclick="sel(this)"><div class="qradio"></div><span>用 sort(a, a+n) 排序</span></button>
+        </div>
+        <div class="qfb" id="q5-2-fb"></div>
+      </div>
+      <div style="display:flex;gap:var(--s3);flex-wrap:wrap;margin-top:var(--s4)">
+        <button class="qbtn qbtn-check" onclick="chk('q5')">检查答案</button>
+        <button class="qbtn qbtn-reset" onclick="rst('q5')">重新作答</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Finish -->
+  <section class="screen ai" style="text-align:center;padding:var(--s12) 0">
+    <div style="font-size:3rem;margin-bottom:var(--s6)">🎉</div>
+    <h2 class="sh" style="text-align:center">课程完成！</h2>
+    <p style="color:var(--text2);max-width:480px;margin:0 auto var(--s8)">从动态数组的概念，到核心操作，到安全编程——你现在能读懂、调试、并向 AI 精准描述 vector 相关的代码了。</p>
+    <div class="pcards" style="text-align:left;max-width:480px;margin:0 auto">
+      <div class="pc"><div class="pc-icon">🗣️</div><div class="pc-title">你能说出</div><p>"用 vector&lt;int&gt; 动态存储，push_back 追加，sort(begin,end) 排序"</p></div>
+      <div class="pc"><div class="pc-icon">🔍</div><div class="pc-title">你能发现</div><p>越界访问、空 vector 操作等 RE 风险点</p></div>
+    </div>
+  </section>
+</div>
+</section>
+
+<script>
+(function(){
+'use strict';
+
+// PROGRESS
+var pb=document.getElementById('pbar');
+function upd(){
+  var s=window.scrollY,h=document.documentElement.scrollHeight-window.innerHeight;
+  pb.style.width=(h>0?s/h*100:0)+'%';
+}
+window.addEventListener('scroll',function(){requestAnimationFrame(upd)},{passive:true});
+
+// SCROLL ANIMATIONS
+var ao=new IntersectionObserver(function(es){
+  es.forEach(function(e){if(e.isIntersecting){e.target.classList.add('vis');ao.unobserve(e.target);}});
+},{rootMargin:'0px 0px -10% 0px',threshold:0.1});
+document.querySelectorAll('.ai').forEach(function(el){ao.observe(el);});
+document.querySelectorAll('.sg').forEach(function(p){
+  Array.from(p.children).forEach(function(c,i){c.style.setProperty('--si',i);});
+});
+
+// NAV DOTS
+var mods=document.querySelectorAll('.mod');
+var dots=document.querySelectorAll('.ndot');
+var mo=new IntersectionObserver(function(es){
+  es.forEach(function(e){
+    if(e.isIntersecting&&e.intersectionRatio>=0.3){
+      var id=e.target.id;
+      dots.forEach(function(d){
+        d.classList.remove('active');
+        if(d.dataset.t===id){d.classList.add('active','visited');}
+      });
+    }
+  });
+},{threshold:0.3});
+mods.forEach(function(m){mo.observe(m);});
+
+window.goMod=function(id){
+  var el=document.getElementById(id);
+  if(el)el.scrollIntoView({behavior:'smooth'});
+};
+
+document.addEventListener('keydown',function(e){
+  if(['INPUT','TEXTAREA'].includes(e.target.tagName))return;
+  var ms=Array.from(mods);
+  var cur=ms.findIndex(function(m){var r=m.getBoundingClientRect();return r.top<=80&&r.bottom>80;});
+  if(e.key==='ArrowDown'||e.key==='ArrowRight'){e.preventDefault();if(cur<ms.length-1)ms[cur+1].scrollIntoView({behavior:'smooth'});}
+  if(e.key==='ArrowUp'||e.key==='ArrowLeft'){e.preventDefault();if(cur>0)ms[cur-1].scrollIntoView({behavior:'smooth'});}
+});
+
+// TOOLTIPS
+var tip=document.getElementById('tip');
+function showTip(txt,e){tip.textContent=txt;tip.classList.add('vis');moveTip(e);}
+function moveTip(e){
+  var x=e.clientX,y=e.clientY,w=tip.offsetWidth||260,h=tip.offsetHeight||60;
+  var l=x+12,t=y-h-8;
+  if(l+w>window.innerWidth-8)l=x-w-12;
+  if(t<8)t=y+20;
+  tip.style.left=l+'px';tip.style.top=t+'px';
+}
+function hideTip(){tip.classList.remove('vis');}
+document.querySelectorAll('.tt').forEach(function(el){
+  var t=el.dataset.t;
+  el.addEventListener('mouseenter',function(e){showTip(t,e);});
+  el.addEventListener('mousemove',moveTip);
+  el.addEventListener('mouseleave',hideTip);
+  el.addEventListener('click',function(e){tip.classList.contains('vis')?hideTip():showTip(t,e);});
+});
+
+// GROUP CHAT DATA
+var chatData={
+  c1:[
+    {s:'你的程序',c:'#2A7B9B',r:false,t:'我需要存 n 个数字，但 n 是运行时才知道的……'},
+    {s:'固定数组',c:'#9E9790',r:true,t:'没问题，你猜个上限，我给你留空间。猜 100 够吗？'},
+    {s:'你的程序',c:'#2A7B9B',r:false,t:'但万一 n 有 10000 呢？'},
+    {s:'固定数组',c:'#9E9790',r:true,t:'那就猜 100000？不过你得提前说好，我不能运行时改大小。'},
+    {s:'你的程序',c:'#2A7B9B',r:false,t:'这也太浪费了……有没有别的办法？'},
+    {s:'vector',c:'#D94F30',r:false,t:'我来！告诉我 n 是多少，我按需分配，不多不少。'},
+    {s:'你的程序',c:'#2A7B9B',r:false,t:'真的？万一 n 变了怎么办？'},
+    {s:'vector',c:'#D94F30',r:false,t:'我支持 push_back，随时加元素，自动扩容。你不用猜。'},
+    {s:'固定数组',c:'#9E9790',r:true,t:'……好吧，确实比我灵活。'},
+  ],
+  c2:[
+    {s:'代码逻辑',c:'#2A7B9B',r:false,t:'v.clear() 执行完毕，size = 0，vector 已清空。'},
+    {s:'下一行',c:'#D94F30',r:false,t:'我要访问 v[1]！给我第二个元素！'},
+    {s:'vector',c:'#2D8B55',r:true,t:'啊？我是空的，里面没有任何元素！'},
+    {s:'下一行',c:'#D94F30',r:false,t:'没有？但我就是要 v[1]……'},
+    {s:'vector',c:'#2D8B55',r:true,t:'这是越界访问！我无法提供不存在的内存！'},
+    {s:'操作系统',c:'#7B6DAA',r:true,t:'检测到非法内存访问。程序已终止。RE ❌'},
+    {s:'安全写法',c:'#2A7B9B',r:false,t:'如果先 if (!v.empty()) 检查，就能避免这个悲剧。'},
+    {s:'操作系统',c:'#7B6DAA',r:true,t:'✅ 检查通过，走 else 分支，正常输出"vector 已空"。'},
+  ]
+};
+var chatIdx={c1:0,c2:0};
+
+window.cn=function(id){
+  var idx=chatIdx[id],data=chatData[id];
+  if(idx>=data.length)return;
+  var msg=data[idx];chatIdx[id]++;
+  var typ=document.getElementById(id+'-typ');
+  var tav=document.getElementById(id+'-tav');
+  typ.style.display='flex';
+  tav.textContent=msg.s[0];tav.style.background=msg.c;
+  var msgs=document.getElementById(id+'-msgs');
+  msgs.scrollTop=msgs.scrollHeight;
+  setTimeout(function(){
+    typ.style.display='none';
+    var d=document.createElement('div');
+    d.className='chat-msg'+(msg.r?' r':'');
+    d.innerHTML='<div class="chat-av" style="background:'+msg.c+'">'+msg.s[0]+'</div><div class="chat-bub"><span class="chat-sndr" style="color:'+msg.c+'">'+msg.s+'</span><p>'+msg.t+'</p></div>';
+    msgs.appendChild(d);msgs.scrollTop=msgs.scrollHeight;
+  },600);
+};
+
+window.cr=function(id){
+  chatIdx[id]=0;
+  document.getElementById(id+'-msgs').innerHTML='';
+  document.getElementById(id+'-typ').style.display='none';
+};
+
+// VECTOR VISUAL
+var vs=[1,2,3];
+function rvv(){
+  var c=document.getElementById('vv');if(!c)return;
+  c.innerHTML='';
+  if(vs.length===0){c.innerHTML='<div style="padding:var(--s4);color:var(--textm);font-size:var(--txsm);font-family:var(--fm)">（空）</div>';
+  }else{vs.forEach(function(v,i){var d=document.createElement('div');d.className='vcell';d.innerHTML='<div class="vcell-v">'+v+'</div><div class="vcell-i">['+i+']</div>';c.appendChild(d);});}
+  document.getElementById('vlbl').textContent='当前：v = {'+vs.join(', ')+'}\u3000size = '+vs.length;
+}
+window.vop=function(op,val){
+  var m=document.getElementById('vmsg');
+  if(op==='push'){vs.push(val);m.textContent='✅ push_back('+val+') — 在尾部追加 '+val;}
+  else if(op==='pop'){if(vs.length===0){m.textContent='❌ vector 已空！pop_back() 会导致未定义行为！';return;}var rm=vs.pop();m.textContent='✅ pop_back() — 删除了尾部元素 '+rm;}
+  else{vs=[1,2,3];m.textContent='↩️ 已重置为 {1, 2, 3}';}
+  rvv();
+};
+rvv();
+
+// FLOW ANIMATION
+var fsteps=[
+  {id:'fs1',d:'📥 读取 n = 5。程序现在知道要处理 5 个数字。'},
+  {id:'fs2',d:'🗄️ 创建 vector<int> a(5)，内存里分配了 5 个整数的空间。当前：{0,0,0,0,0}'},
+  {id:'fs3',d:'📝 循环读入：a[0]=3, a[1]=1, a[2]=4, a[3]=1, a[4]=5。当前：{3,1,4,1,5}'},
+  {id:'fs4',d:'🔀 sort(a.begin(), a.end()) 执行——标准库内部快排。结果：{1,1,3,4,5}'},
+  {id:'fs5',d:'📤 范围 for 循环输出：1 1 3 4 5，然后换行。程序结束，返回 0。'},
+];
+var fi=0;
+window.fnxt=function(){
+  if(fi>=fsteps.length)return;
+  fsteps.forEach(function(s){var e=document.getElementById(s.id);if(e)e.classList.remove('act');});
+  for(var i=0;i<fi;i++){var e=document.getElementById(fsteps[i].id);if(e)e.classList.add('done');}
+  var cur=fsteps[fi];var el=document.getElementById(cur.id);
+  if(el)el.classList.add('act');
+  document.getElementById('fdesc').textContent=cur.d;
+  fi++;
+};
+window.frst=function(){
+  fi=0;fsteps.forEach(function(s){var e=document.getElementById(s.id);if(e)e.classList.remove('act','done');});
+  document.getElementById('fdesc').textContent='点击"下一步"开始追踪执行过程';
+};
+
+// QUIZ
+window.sel=function(btn){
+  var b=btn.closest('.qblock');
+  b.querySelectorAll('.qopt').forEach(function(o){o.classList.remove('sel');});
+  btn.classList.add('sel');
+};
+
+window.chk=function(sid){
+  var c=document.querySelector('#'+sid+' .qbox');
+  var qs=c.querySelectorAll('.qblock');
+  qs.forEach(function(q,i){
+    var s=q.querySelector('.qopt.sel');
+    var fb=q.querySelector('.qfb');
+    var cv=q.dataset.c;
+    var ec=q.dataset.ec;var ew=q.dataset.ew;
+    if(!s){fb.textContent='请先选择一个答案！';fb.className='qfb show warn';return;}
+    if(s.dataset.v===cv){
+      s.classList.add('ok');
+      fb.innerHTML='<strong>✅ 答对了！</strong> '+ec;
+      fb.className='qfb show ok';
+    }else{
+      s.classList.add('no');
+      var co=q.querySelector('[data-v="'+cv+'"]');
+      if(co)co.classList.add('ok');
+      fb.innerHTML='<strong>再想想。</strong> '+ew;
+      fb.className='qfb show no';
+    }
+    q.querySelectorAll('.qopt').forEach(function(o){o.disabled=true;});
+  });
+};
+
+window.rst=function(sid){
+  var c=document.querySelector('#'+sid+' .qbox');
+  c.querySelectorAll('.qopt').forEach(function(o){o.classList.remove('sel','ok','no');o.disabled=false;});
+  c.querySelectorAll('.qfb').forEach(function(f){f.className='qfb';f.innerHTML='';});
+};
+
+})();
+</script>
+</body>
+</html>
