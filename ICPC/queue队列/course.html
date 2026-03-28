@@ -1,0 +1,1300 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>队列 & 优先队列 — 交互式课程</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --color-bg: #FAF7F2;
+  --color-bg-warm: #F5F0E8;
+  --color-bg-code: #1E1E2E;
+  --color-text: #2C2A28;
+  --color-text-secondary: #6B6560;
+  --color-text-muted: #9E9790;
+  --color-border: #E5DFD6;
+  --color-border-light: #EEEBE5;
+  --color-surface: #FFFFFF;
+  --color-surface-warm: #FDF9F3;
+  --color-accent: #2A7B9B;
+  --color-accent-hover: #1E6080;
+  --color-accent-light: #E4F2F7;
+  --color-accent-muted: #5A9BB5;
+  --color-success: #2D8B55;
+  --color-success-light: #E8F5EE;
+  --color-error: #C93B3B;
+  --color-error-light: #FDE8E8;
+  --color-info: #2A7B9B;
+  --color-info-light: #E4F2F7;
+  --color-actor-1: #D94F30;
+  --color-actor-2: #2A7B9B;
+  --color-actor-3: #7B6DAA;
+  --color-actor-4: #D4A843;
+  --color-actor-5: #2D8B55;
+  --font-display: 'Bricolage Grotesque', Georgia, serif;
+  --font-body: 'DM Sans', -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 1.875rem;
+  --text-4xl: 2.25rem;
+  --text-5xl: 3rem;
+  --text-6xl: 3.75rem;
+  --leading-tight: 1.15;
+  --leading-snug: 1.3;
+  --leading-normal: 1.6;
+  --leading-loose: 1.8;
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+  --space-20: 5rem;
+  --space-24: 6rem;
+  --content-width: 820px;
+  --content-width-wide: 1000px;
+  --nav-height: 50px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-full: 9999px;
+  --shadow-sm: 0 1px 2px rgba(44,42,40,0.05);
+  --shadow-md: 0 4px 12px rgba(44,42,40,0.08);
+  --shadow-lg: 0 8px 24px rgba(44,42,40,0.1);
+  --shadow-xl: 0 16px 48px rgba(44,42,40,0.12);
+  --ease-out: cubic-bezier(0.16,1,0.3,1);
+  --ease-in-out: cubic-bezier(0.65,0,0.35,1);
+  --duration-fast: 150ms;
+  --duration-normal: 300ms;
+  --duration-slow: 500ms;
+  --stagger-delay: 120ms;
+}
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-snap-type:y proximity;scroll-behavior:smooth;font-size:16px}
+body{font-family:var(--font-body);color:var(--color-text);background:var(--color-bg);background-image:radial-gradient(ellipse at 20% 50%,rgba(42,123,155,0.04) 0%,transparent 50%);line-height:var(--leading-normal)}
+
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--color-border);border-radius:var(--radius-full)}
+
+pre,code{white-space:pre-wrap;word-break:break-word;overflow-x:hidden}
+.translation-code::-webkit-scrollbar,pre::-webkit-scrollbar{display:none}
+
+/* NAV */
+.nav{position:fixed;top:0;left:0;right:0;height:var(--nav-height);z-index:100;background:rgba(250,247,242,0.92);backdrop-filter:blur(12px);border-bottom:1px solid var(--color-border-light)}
+.progress-bar{position:absolute;top:0;left:0;height:3px;background:var(--color-accent);width:0%;transition:width 0.1s linear;border-radius:0 var(--radius-full) var(--radius-full) 0}
+.nav-inner{display:flex;align-items:center;justify-content:space-between;height:100%;padding:0 var(--space-6);max-width:var(--content-width-wide);margin:0 auto}
+.nav-title{font-family:var(--font-display);font-size:var(--text-sm);font-weight:600;color:var(--color-text-secondary)}
+.nav-dots{display:flex;gap:var(--space-2);align-items:center}
+.nav-dot{width:10px;height:10px;border-radius:50%;border:2px solid var(--color-text-muted);background:transparent;cursor:pointer;transition:all var(--duration-normal);position:relative}
+.nav-dot:hover{border-color:var(--color-accent)}
+.nav-dot.current{border-color:var(--color-accent);background:var(--color-accent-light);box-shadow:0 0 0 3px var(--color-accent-light)}
+.nav-dot.visited{background:var(--color-accent);border-color:var(--color-accent)}
+.nav-dot::after{content:attr(data-tooltip);position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);background:var(--color-text);color:#fff;font-size:var(--text-xs);font-family:var(--font-body);padding:4px 8px;border-radius:var(--radius-sm);white-space:nowrap;opacity:0;pointer-events:none;transition:opacity var(--duration-fast)}
+.nav-dot:hover::after{opacity:1}
+
+/* MODULES */
+.module{min-height:100dvh;min-height:100vh;scroll-snap-align:start;padding:calc(var(--nav-height) + var(--space-16)) var(--space-6) var(--space-16)}
+.module-content{max-width:var(--content-width);margin:0 auto}
+.module-header{margin-bottom:var(--space-12)}
+.module-number{display:block;font-family:var(--font-display);font-size:var(--text-6xl);font-weight:800;color:var(--color-accent);opacity:0.15;line-height:1;margin-bottom:var(--space-2)}
+.module-title{font-family:var(--font-display);font-size:var(--text-4xl);font-weight:700;line-height:var(--leading-tight);margin-bottom:var(--space-3)}
+.module-subtitle{font-size:var(--text-lg);color:var(--color-text-secondary);line-height:var(--leading-snug)}
+
+/* SCREENS */
+.screen{margin-bottom:var(--space-20)}
+.screen-heading{font-family:var(--font-display);font-size:var(--text-2xl);font-weight:600;margin-bottom:var(--space-6);line-height:var(--leading-snug)}
+.screen p{font-size:var(--text-base);line-height:var(--leading-loose);color:var(--color-text);margin-bottom:var(--space-4);max-width:68ch}
+
+/* ANIMATE IN */
+.animate-in{opacity:0;transform:translateY(20px);transition:opacity var(--duration-slow) var(--ease-out),transform var(--duration-slow) var(--ease-out)}
+.animate-in.visible{opacity:1;transform:translateY(0)}
+.stagger-children>.animate-in:nth-child(1){transition-delay:0ms}
+.stagger-children>.animate-in:nth-child(2){transition-delay:120ms}
+.stagger-children>.animate-in:nth-child(3){transition-delay:240ms}
+.stagger-children>.animate-in:nth-child(4){transition-delay:360ms}
+.stagger-children>.animate-in:nth-child(5){transition-delay:480ms}
+
+/* TRANSLATION BLOCK */
+.translation-block{display:grid;grid-template-columns:1fr 1fr;gap:0;border-radius:var(--radius-md);overflow:visible;box-shadow:var(--shadow-md);margin:var(--space-8) 0}
+.translation-code{background:var(--color-bg-code);color:#CDD6F4;padding:var(--space-6);font-family:var(--font-mono);font-size:var(--text-sm);line-height:1.8;position:relative;overflow:hidden;border-radius:var(--radius-md) 0 0 var(--radius-md)}
+.translation-english{background:var(--color-surface-warm);padding:var(--space-6);font-size:var(--text-sm);line-height:1.8;border-left:3px solid var(--color-accent);border-radius:0 var(--radius-md) var(--radius-md) 0}
+.translation-label{position:absolute;top:var(--space-2);right:var(--space-3);font-size:var(--text-xs);font-family:var(--font-mono);text-transform:uppercase;letter-spacing:0.1em;opacity:0.4;color:#CDD6F4}
+.translation-english .translation-label{position:static;display:block;margin-bottom:var(--space-3);color:var(--color-text-muted)}
+.tl{margin-bottom:var(--space-3);color:var(--color-text-secondary);padding-left:var(--space-4);border-left:2px solid var(--color-border)}
+.tl:last-child{margin-bottom:0}
+.code-keyword{color:#CBA6F7}
+.code-string{color:#A6E3A1}
+.code-function{color:#89B4FA}
+.code-comment{color:#6C7086}
+.code-number{color:#FAB387}
+.code-property{color:#F9E2AF}
+.code-operator{color:#94E2D5}
+.code-type{color:#F38BA8}
+@media(max-width:768px){.translation-block{grid-template-columns:1fr}.translation-code{border-radius:var(--radius-md) var(--radius-md) 0 0}.translation-english{border-left:none;border-top:3px solid var(--color-accent);border-radius:0 0 var(--radius-md) var(--radius-md)}}
+
+/* CARDS */
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:var(--space-4);margin:var(--space-8) 0}
+.card{background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-md);padding:var(--space-5);box-shadow:var(--shadow-sm);transition:box-shadow var(--duration-normal),transform var(--duration-normal)}
+.card:hover{box-shadow:var(--shadow-md);transform:translateY(-2px)}
+.card-icon{font-size:1.8rem;margin-bottom:var(--space-3)}
+.card-title{font-family:var(--font-display);font-size:var(--text-base);font-weight:700;margin-bottom:var(--space-2)}
+.card-desc{font-size:var(--text-sm);color:var(--color-text-secondary);line-height:var(--leading-normal)}
+.card-badge{display:inline-block;font-family:var(--font-mono);font-size:var(--text-xs);text-transform:uppercase;letter-spacing:0.05em;padding:2px 8px;border-radius:var(--radius-full);margin-bottom:var(--space-3)}
+
+/* CALLOUT */
+.callout{background:var(--color-accent-light);border-left:4px solid var(--color-accent);border-radius:var(--radius-md);padding:var(--space-5) var(--space-6);margin:var(--space-8) 0}
+.callout-title{font-family:var(--font-display);font-size:var(--text-base);font-weight:700;color:var(--color-accent);margin-bottom:var(--space-2)}
+.callout p{font-size:var(--text-sm);line-height:var(--leading-loose);margin:0;color:var(--color-text)}
+.callout-warn{background:#FEF9E7;border-color:#D4A843}
+.callout-warn .callout-title{color:#A07820}
+.callout-success{background:var(--color-success-light);border-color:var(--color-success)}
+.callout-success .callout-title{color:var(--color-success)}
+
+/* QUEUE VISUALIZER */
+.queue-vis{background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-md);padding:var(--space-6);box-shadow:var(--shadow-md);margin:var(--space-8) 0}
+.queue-vis-title{font-family:var(--font-mono);font-size:var(--text-xs);text-transform:uppercase;letter-spacing:0.1em;color:var(--color-text-muted);margin-bottom:var(--space-4)}
+.queue-track{display:flex;align-items:center;gap:var(--space-2);min-height:60px;padding:var(--space-4);background:var(--color-bg-warm);border-radius:var(--radius-sm);flex-wrap:wrap;margin-bottom:var(--space-4);position:relative;overflow:hidden}
+.queue-label-left{font-size:var(--text-xs);font-family:var(--font-mono);color:var(--color-text-muted);writing-mode:horizontal-tb;margin-right:var(--space-2)}
+.queue-label-right{font-size:var(--text-xs);font-family:var(--font-mono);color:var(--color-text-muted);margin-left:auto}
+.queue-item{width:52px;height:52px;border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:var(--text-base);font-weight:600;transition:all var(--duration-normal) var(--ease-out);animation:itemAppear 0.4s var(--ease-out) both}
+@keyframes itemAppear{from{opacity:0;transform:scale(0.5) translateX(30px)}to{opacity:1;transform:scale(1) translateX(0)}}
+@keyframes itemLeave{from{opacity:1;transform:scale(1)}to{opacity:0;transform:scale(0.5) translateX(-30px)}}
+.item-leaving{animation:itemLeave 0.3s var(--ease-out) both}
+.queue-item-new{background:var(--color-accent-light);border:2px solid var(--color-accent);color:var(--color-accent)}
+.queue-item-normal{background:var(--color-surface-warm);border:2px solid var(--color-border);color:var(--color-text)}
+.queue-item-head{background:var(--color-accent);border:2px solid var(--color-accent);color:#fff}
+.queue-controls{display:flex;gap:var(--space-3);flex-wrap:wrap}
+.queue-input{font-family:var(--font-mono);padding:var(--space-2) var(--space-3);border:2px solid var(--color-border);border-radius:var(--radius-sm);font-size:var(--text-sm);width:80px;outline:none;transition:border-color var(--duration-fast)}
+.queue-input:focus{border-color:var(--color-accent)}
+.queue-info{font-family:var(--font-mono);font-size:var(--text-sm);color:var(--color-text-secondary);margin-top:var(--space-3);padding:var(--space-2) var(--space-3);background:var(--color-bg-warm);border-radius:var(--radius-sm)}
+
+/* BUTTONS */
+.btn{padding:var(--space-2) var(--space-5);border:none;border-radius:var(--radius-sm);font-family:var(--font-body);font-size:var(--text-sm);font-weight:600;cursor:pointer;transition:all var(--duration-fast)}
+.btn-primary{background:var(--color-accent);color:#fff}
+.btn-primary:hover{background:var(--color-accent-hover)}
+.btn-secondary{background:var(--color-surface);color:var(--color-text);border:2px solid var(--color-border)}
+.btn-secondary:hover{border-color:var(--color-accent);color:var(--color-accent)}
+.btn-sm{padding:var(--space-1) var(--space-3);font-size:var(--text-xs)}
+
+/* HEAP VISUALIZER */
+.heap-vis{background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-md);padding:var(--space-6);box-shadow:var(--shadow-md);margin:var(--space-8) 0}
+.heap-tree{display:flex;flex-direction:column;align-items:center;gap:var(--space-4);margin-bottom:var(--space-6)}
+.heap-row{display:flex;gap:var(--space-4);justify-content:center}
+.heap-node{width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:var(--text-sm);font-weight:700;transition:all 0.4s var(--ease-out);animation:nodeAppear 0.4s var(--ease-out) both}
+@keyframes nodeAppear{from{opacity:0;transform:scale(0)}to{opacity:1;transform:scale(1)}}
+.heap-node-max{background:var(--color-actor-1);color:#fff;box-shadow:0 4px 12px rgba(217,79,48,0.3)}
+.heap-node-min{background:var(--color-actor-2);color:#fff;box-shadow:0 4px 12px rgba(42,123,155,0.3)}
+.heap-node-root{transform:scale(1.15);box-shadow:0 6px 20px rgba(217,79,48,0.4)}
+.heap-node-dim{opacity:0.35}
+.heap-label{text-align:center;font-family:var(--font-mono);font-size:var(--text-xs);color:var(--color-text-muted);margin-bottom:var(--space-4)}
+.heap-caption{font-size:var(--text-sm);color:var(--color-text-secondary);text-align:center;margin-bottom:var(--space-4)}
+
+/* CHAT */
+.chat-window{background:var(--color-surface);border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);overflow:hidden;margin:var(--space-8) 0}
+.chat-header{background:var(--color-bg-warm);padding:var(--space-3) var(--space-5);border-bottom:1px solid var(--color-border);font-family:var(--font-display);font-size:var(--text-sm);font-weight:600;color:var(--color-text-secondary)}
+.chat-messages{padding:var(--space-5);display:flex;flex-direction:column;gap:var(--space-4);min-height:200px}
+.chat-message{display:none;align-items:flex-start;gap:var(--space-3)}
+.chat-message.right{flex-direction:row-reverse}
+.chat-avatar{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:var(--text-sm);color:#fff;flex-shrink:0}
+.chat-bubble{background:var(--color-surface-warm);border:1px solid var(--color-border);border-radius:var(--radius-md);padding:var(--space-3) var(--space-4);max-width:80%;box-shadow:var(--shadow-sm)}
+.chat-message.right .chat-bubble{background:var(--color-accent-light);border-color:var(--color-accent-muted)}
+.chat-sender{font-size:var(--text-xs);font-family:var(--font-mono);font-weight:600;display:block;margin-bottom:var(--space-1)}
+.chat-bubble p{font-size:var(--text-sm);line-height:var(--leading-normal);margin:0;color:var(--color-text)}
+.chat-typing{display:none;align-items:center;gap:var(--space-3);padding:0 var(--space-5) var(--space-3)}
+.chat-typing-dots{display:flex;gap:5px;padding:var(--space-3);background:var(--color-surface-warm);border:1px solid var(--color-border);border-radius:var(--radius-md)}
+.typing-dot{width:8px;height:8px;border-radius:50%;background:var(--color-text-muted);animation:typingBounce 1.4s infinite}
+.typing-dot:nth-child(2){animation-delay:0.2s}
+.typing-dot:nth-child(3){animation-delay:0.4s}
+@keyframes typingBounce{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-6px)}}
+.chat-controls{padding:var(--space-3) var(--space-5);border-top:1px solid var(--color-border);background:var(--color-bg-warm);display:flex;gap:var(--space-3);align-items:center}
+.chat-progress{font-size:var(--text-xs);font-family:var(--font-mono);color:var(--color-text-muted);margin-left:auto}
+@keyframes fadeSlideUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+
+/* FLOW ANIMATION */
+.flow-animation{background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-md);padding:var(--space-6);margin:var(--space-8) 0;box-shadow:var(--shadow-md)}
+.flow-actors{display:flex;justify-content:space-around;align-items:center;margin-bottom:var(--space-6);flex-wrap:wrap;gap:var(--space-4)}
+.flow-actor{display:flex;flex-direction:column;align-items:center;gap:var(--space-2);transition:all var(--duration-normal) var(--ease-out)}
+.flow-actor.active .flow-actor-icon{box-shadow:0 0 0 3px var(--color-accent),0 0 20px rgba(42,123,155,0.25);transform:scale(1.1)}
+.flow-actor-icon{width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1.1rem;color:#fff;transition:all var(--duration-normal) var(--ease-out)}
+.flow-actor span{font-size:var(--text-xs);font-family:var(--font-mono);color:var(--color-text-secondary);text-align:center}
+.flow-step-label{text-align:center;font-size:var(--text-sm);color:var(--color-text);background:var(--color-bg-warm);padding:var(--space-3) var(--space-5);border-radius:var(--radius-sm);margin-bottom:var(--space-4);min-height:44px;display:flex;align-items:center;justify-content:center;line-height:var(--leading-snug)}
+.flow-controls{display:flex;gap:var(--space-3);justify-content:center;align-items:center}
+.flow-progress{font-size:var(--text-xs);font-family:var(--font-mono);color:var(--color-text-muted)}
+.flow-connector{height:2px;flex:1;background:var(--color-border);position:relative;overflow:hidden}
+.flow-connector.active::after{content:'';position:absolute;top:-1px;left:-100%;width:100%;height:4px;background:linear-gradient(90deg,transparent,var(--color-accent));animation:flowPulse 0.8s var(--ease-out) forwards}
+@keyframes flowPulse{to{left:100%}}
+
+/* QUIZ */
+.quiz-container{background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-lg);padding:var(--space-8);margin:var(--space-8) 0;box-shadow:var(--shadow-md)}
+.quiz-title{font-family:var(--font-display);font-size:var(--text-xl);font-weight:700;margin-bottom:var(--space-8);color:var(--color-text)}
+.quiz-question-block{margin-bottom:var(--space-8)}
+.quiz-question-block:last-of-type{margin-bottom:var(--space-6)}
+.quiz-q-label{font-size:var(--text-xs);font-family:var(--font-mono);text-transform:uppercase;letter-spacing:0.1em;color:var(--color-accent);margin-bottom:var(--space-3)}
+.quiz-question{font-size:var(--text-base);font-weight:600;margin-bottom:var(--space-4);line-height:var(--leading-snug);font-family:var(--font-display)}
+.quiz-options{display:flex;flex-direction:column;gap:var(--space-2)}
+.quiz-option{display:flex;align-items:center;gap:var(--space-3);padding:var(--space-3) var(--space-4);border:2px solid var(--color-border);border-radius:var(--radius-sm);background:var(--color-surface);cursor:pointer;width:100%;text-align:left;font-family:var(--font-body);font-size:var(--text-sm);transition:all var(--duration-fast)}
+.quiz-option:hover{border-color:var(--color-accent-muted);background:var(--color-accent-light)}
+.quiz-option.selected{border-color:var(--color-accent);background:var(--color-accent-light)}
+.quiz-option.correct{border-color:var(--color-success);background:var(--color-success-light)}
+.quiz-option.incorrect{border-color:var(--color-error);background:var(--color-error-light)}
+.quiz-option:disabled{cursor:default}
+.quiz-option-radio{width:18px;height:18px;border-radius:50%;border:2px solid var(--color-border);flex-shrink:0;transition:all var(--duration-fast)}
+.quiz-option.selected .quiz-option-radio{border-color:var(--color-accent);background:var(--color-accent);box-shadow:inset 0 0 0 3px white}
+.quiz-option.correct .quiz-option-radio{border-color:var(--color-success);background:var(--color-success)}
+.quiz-option.incorrect .quiz-option-radio{border-color:var(--color-error);background:var(--color-error)}
+.quiz-feedback{max-height:0;overflow:hidden;opacity:0;transition:max-height var(--duration-normal),opacity var(--duration-normal);font-size:var(--text-sm)}
+.quiz-feedback.show{max-height:200px;opacity:1;padding:var(--space-3);margin-top:var(--space-2);border-radius:var(--radius-sm)}
+.quiz-feedback.success{background:var(--color-success-light);color:var(--color-success)}
+.quiz-feedback.error{background:var(--color-error-light);color:var(--color-error)}
+.quiz-feedback.warning{background:#FEF9E7;color:#A07820}
+.quiz-actions{display:flex;gap:var(--space-3);margin-top:var(--space-4)}
+.quiz-divider{height:1px;background:var(--color-border);margin:var(--space-6) 0}
+
+/* COMPARISON TABLE */
+.compare-table{width:100%;border-collapse:collapse;margin:var(--space-8) 0;font-size:var(--text-sm)}
+.compare-table th{background:var(--color-bg-warm);padding:var(--space-3) var(--space-4);text-align:left;font-family:var(--font-display);font-weight:600;border-bottom:2px solid var(--color-border)}
+.compare-table td{padding:var(--space-3) var(--space-4);border-bottom:1px solid var(--color-border-light);vertical-align:top}
+.compare-table tr:hover td{background:var(--color-bg-warm)}
+.compare-table .tag{display:inline-block;padding:2px 8px;border-radius:var(--radius-full);font-family:var(--font-mono);font-size:var(--text-xs);font-weight:600}
+.tag-q{background:var(--color-accent-light);color:var(--color-accent)}
+.tag-pq{background:#FEF0EC;color:var(--color-actor-1)}
+
+/* STEP CARDS */
+.step-cards{display:flex;flex-direction:column;gap:var(--space-4);margin:var(--space-8) 0}
+.step-card{display:flex;align-items:flex-start;gap:var(--space-4);background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-md);padding:var(--space-4) var(--space-5);box-shadow:var(--shadow-sm)}
+.step-num{width:32px;height:32px;border-radius:50%;background:var(--color-accent);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:var(--text-sm);flex-shrink:0;margin-top:2px}
+.step-content{flex:1}
+.step-title{font-weight:700;font-size:var(--text-base);margin-bottom:var(--space-1);font-family:var(--font-display)}
+.step-desc{font-size:var(--text-sm);color:var(--color-text-secondary);line-height:var(--leading-normal)}
+
+/* TOOLTIP */
+.tooltip-term{cursor:pointer;border-bottom:2px dashed var(--color-accent-muted);color:var(--color-text)}
+.tooltip-popup{position:fixed;background:var(--color-text);color:#FAF7F2;padding:var(--space-3) var(--space-4);border-radius:var(--radius-sm);font-size:var(--text-sm);max-width:280px;z-index:9999;pointer-events:none;opacity:0;transition:opacity var(--duration-fast);line-height:var(--leading-normal);box-shadow:var(--shadow-xl)}
+.tooltip-popup.visible{opacity:1}
+</style>
+</head>
+<body>
+
+<!-- NAVIGATION -->
+<nav class="nav">
+  <div class="progress-bar" id="progress-bar" role="progressbar" aria-valuenow="0"></div>
+  <div class="nav-inner">
+    <span class="nav-title">队列 & 优先队列</span>
+    <div class="nav-dots">
+      <button class="nav-dot" data-target="module-1" data-tooltip="什么是队列" role="tab" aria-label="Module 1"></button>
+      <button class="nav-dot" data-target="module-2" data-tooltip="queue 的操作" role="tab" aria-label="Module 2"></button>
+      <button class="nav-dot" data-target="module-3" data-tooltip="优先队列" role="tab" aria-label="Module 3"></button>
+      <button class="nav-dot" data-target="module-4" data-tooltip="最小堆" role="tab" aria-label="Module 4"></button>
+      <button class="nav-dot" data-target="module-5" data-tooltip="测验 & 总结" role="tab" aria-label="Module 5"></button>
+    </div>
+  </div>
+</nav>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<!-- MODULE 1: 什么是队列 -->
+<!-- ══════════════════════════════════════════════════════════ -->
+<section class="module" id="module-1" style="background:var(--color-bg)">
+  <div class="module-content">
+    <header class="module-header animate-in">
+      <span class="module-number">01</span>
+      <h1 class="module-title">什么是队列？</h1>
+      <p class="module-subtitle">从地铁安检口到内存里的数据结构——队列的核心思想只有四个字。</p>
+    </header>
+
+    <!-- Screen 1: 生活中的队列 -->
+    <section class="screen animate-in">
+      <h2 class="screen-heading">你每天都在用队列</h2>
+      <p>想象地铁安检口：先到的人先通过，后到的人排在后面等。<strong>先进先出</strong>，绝不插队。</p>
+      <p>计算机里的队列完全相同——它是一条有序的通道，数据从一端进入，从另一端离开。</p>
+
+      <div class="cards stagger-children">
+        <div class="card animate-in">
+          <div class="card-icon">🚇</div>
+          <div class="card-title">安检口</div>
+          <div class="card-desc">最先排队的人最先过安检，不管你多着急。</div>
+        </div>
+        <div class="card animate-in">
+          <div class="card-icon">🖨️</div>
+          <div class="card-title">打印机</div>
+          <div class="card-desc">第一个发送的文件第一个被打印，后来的文件等着。</div>
+        </div>
+        <div class="card animate-in">
+          <div class="card-icon">💻</div>
+          <div class="card-title">BFS 搜索</div>
+          <div class="card-desc">ICPC 里最常用的场景：广度优先搜索每一层都靠队列维护顺序。</div>
+        </div>
+        <div class="card animate-in">
+          <div class="card-icon">📡</div>
+          <div class="card-title">网络数据包</div>
+          <div class="card-desc">路由器把每个数据包按到达顺序排成队列，依次转发。</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Screen 2: FIFO vs LIFO -->
+    <section class="screen animate-in">
+      <h2 class="screen-heading">队列 vs 栈：方向不同，用途不同</h2>
+      <p>队列和<span class="tooltip-term" data-tip="栈（Stack）：另一种常用数据结构，规则是「后进先出（LIFO）」——最后压入的元素最先弹出，就像叠盘子。">栈</span>是算法里最常见的两对搭档，区别只在于「谁先出来」。</p>
+
+      <table class="compare-table">
+        <thead>
+          <tr>
+            <th>数据结构</th>
+            <th>规则</th>
+            <th>C++ 类型</th>
+            <th>典型用途</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="tag tag-q">queue</span></td>
+            <td>先进先出 <strong>FIFO</strong></td>
+            <td><code>queue&lt;T&gt;</code></td>
+            <td>BFS、任务调度</td>
+          </tr>
+          <tr>
+            <td><span class="tag tag-pq">stack</span></td>
+            <td>后进先出 <strong>LIFO</strong></td>
+            <td><code>stack&lt;T&gt;</code></td>
+            <td>DFS、括号匹配</td>
+          </tr>
+          <tr>
+            <td><span class="tag tag-pq">priority_queue</span></td>
+            <td>按优先级出队</td>
+            <td><code>priority_queue&lt;T&gt;</code></td>
+            <td>Dijkstra、贪心</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="callout">
+        <div class="callout-title">💡 学这两个文件能干什么？</div>
+        <p><code>queue.cpp</code> 演示了普通队列的全部操作。<code>priority_queue.cpp</code> 演示了优先队列（最大堆和最小堆）。这两个<span class="tooltip-term" data-tip="数据结构（Data Structure）：组织和存储数据的方式，决定了「怎么访问」和「访问有多快」。">数据结构</span>覆盖了 ICPC 里绝大多数需要有序队列的题型。</p>
+      </div>
+    </section>
+
+    <!-- Screen 3: 结构可视化 -->
+    <section class="screen animate-in">
+      <h2 class="screen-heading">试一试：亲手操作队列</h2>
+      <p>在下面的模拟器里，输入数字，点击按钮，看看队列怎么运作。</p>
+
+      <div class="queue-vis">
+        <div class="queue-vis-title">queue&lt;int&gt; 模拟器</div>
+        <div style="display:flex;justify-content:space-between;font-size:var(--text-xs);font-family:var(--font-mono);color:var(--color-text-muted);margin-bottom:var(--space-2)">
+          <span>← 队尾 (back)  新元素从这里进入</span>
+          <span>出口 → 队头 (front)</span>
+        </div>
+        <div class="queue-track" id="demo-queue-track">
+          <span id="demo-empty-hint" style="color:var(--color-text-muted);font-size:var(--text-sm);margin:auto">队列为空——先 push 一些元素</span>
+        </div>
+        <div class="queue-info" id="demo-info">size: 0 &nbsp;|&nbsp; empty: true</div>
+        <div class="queue-controls" style="margin-top:var(--space-4)">
+          <input type="number" class="queue-input" id="demo-input" placeholder="数字" value="10">
+          <button class="btn btn-primary btn-sm" onclick="demoPush()">push()</button>
+          <button class="btn btn-secondary btn-sm" onclick="demoPop()">pop()</button>
+          <button class="btn btn-secondary btn-sm" onclick="demoFront()">front()</button>
+          <button class="btn btn-secondary btn-sm" onclick="demoBack()">back()</button>
+          <button class="btn btn-secondary btn-sm" onclick="demoClear()">清空</button>
+        </div>
+        <div id="demo-log" style="margin-top:var(--space-3);font-family:var(--font-mono);font-size:var(--text-xs);color:var(--color-text-muted);min-height:20px"></div>
+      </div>
+    </section>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<!-- MODULE 2: queue 的操作 -->
+<!-- ══════════════════════════════════════════════════════════ -->
+<section class="module" id="module-2" style="background:var(--color-bg-warm)">
+  <div class="module-content">
+    <header class="module-header animate-in">
+      <span class="module-number">02</span>
+      <h1 class="module-title">queue 的全部操作</h1>
+      <p class="module-subtitle">六个函数，一个陷阱——把 queue.cpp 的每一行读懂。</p>
+    </header>
+
+    <!-- Screen 1: 代码翻译 -->
+    <section class="screen animate-in">
+      <h2 class="screen-heading">代码逐行翻译</h2>
+      <p><span class="tooltip-term" data-tip="STL（Standard Template Library）：C++ 标准模板库，提供了 queue、vector、map 等常用数据结构和算法，竞赛里几乎必用。">STL</span> 的 <code>queue</code> 有且只有六个常用操作。来看真实代码：</p>
+
+      <div class="translation-block animate-in">
+        <div class="translation-code">
+          <span class="translation-label">CODE</span>
+          <pre><code><span class="code-type">queue</span><span class="code-operator">&lt;</span><span class="code-keyword">int</span><span class="code-operator">&gt;</span> q<span class="code-operator">;</span>
+
+q<span class="code-operator">.</span><span class="code-function">push</span>(<span class="code-number">10</span>)<span class="code-operator">;</span>
+q<span class="code-operator">.</span><span class="code-function">push</span>(<span class="code-number">20</span>)<span class="code-operator">;</span>
+q<span class="code-operator">.</span><span class="code-function">push</span>(<span class="code-number">30</span>)<span class="code-operator">;</span>
+<span class="code-comment">// 队列：10, 20, 30</span>
+
+cout <span class="code-operator">&lt;&lt;</span> q<span class="code-operator">.</span><span class="code-function">size</span>()<span class="code-operator">;</span>   <span class="code-comment">// 3</span>
+cout <span class="code-operator">&lt;&lt;</span> q<span class="code-operator">.</span><span class="code-function">empty</span>()<span class="code-operator">;</span>  <span class="code-comment">// 0 (false)</span>
+cout <span class="code-operator">&lt;&lt;</span> q<span class="code-operator">.</span><span class="code-function">front</span>()<span class="code-operator">;</span>  <span class="code-comment">// 10</span>
+cout <span class="code-operator">&lt;&lt;</span> q<span class="code-operator">.</span><span class="code-function">back</span>()<span class="code-operator">;</span>   <span class="code-comment">// 30</span></code></pre>
+        </div>
+        <div class="translation-english">
+          <span class="translation-label">PLAIN ENGLISH</span>
+          <div class="translation-lines">
+            <p class="tl">创建一个存整数的空队列，起名叫 q。</p>
+            <p class="tl">把 10 加到队列的末尾（排队）。</p>
+            <p class="tl">再把 20 排进去，紧跟在 10 后面。</p>
+            <p class="tl">再把 30 排进去——队列现在是 10→20→30。</p>
+            <p class="tl">问：现在有多少人在排队？答：3 个。</p>
+            <p class="tl">问：队伍是空的吗？答：0 = false = 不空。</p>
+            <p class="tl">看队伍最前面是谁（不让他走），答：10。</p>
+            <p class="tl">看队伍最后面是谁（不动他），答：30。</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Screen 2: pop 的陷阱 -->
+    <section class="screen animate-in">
+      <h2 class="screen-heading">⚠️ 最容易踩的坑：pop() 不返回值</h2>
+      <p>C++ 的 <code>pop()</code> 只负责删除，不返回被删的元素。这和 Python 的 <code>popleft()</code> 完全不同。</p>
+
+      <div class="translation-block animate-in">
+        <div class="translation-code">
+          <span class="translation-label">CODE</span>
+          <pre><code><span class="code-comment">// ❌ 错误写法（会直接丢失数据）</span>
+<span class="code-keyword">int</span> val <span class="code-operator">=</span> q<span class="code-operator">.</span><span class="code-function">pop</span>()<span class="code-operator">;</span>  <span class="code-comment">// 编译报错！</span>
+
+<span class="code-comment">// ✅ 正确写法</span>
+<span class="code-keyword">int</span> val <span class="code-operator">=</span> q<span class="code-operator">.</span><span class="code-function">front</span>()<span class="code-operator">;</span>  <span class="code-comment">// 先取出 10</span>
+q<span class="code-operator">.</span><span class="code-function">pop</span>()<span class="code-operator">;</span>              <span class="code-comment">// 再删除</span>
+cout <span class="code-operator">&lt;&lt;</span> val<span class="code-operator">;</span>            <span class="code-comment">// 10</span>
+cout <span class="code-operator">&lt;&lt;</span> q<span class="code-operator">.</span><span class="code-function">front</span>()<span class="code-operator">;</span>    <span class="code-comment">// 20（10 已走）</span></code></pre>
+        </div>
+        <div class="translation-english">
+          <span class="translation-label">PLAIN ENGLISH</span>
+          <div class="translation-lines">
+            <p class="tl">试图用 pop() 取值——这行代码根本无法编译，因为 pop() 没有返回值。</p>
+            <p class="tl">————</p>
+            <p class="tl">正确做法第一步：先用 front() 把队头的值 10 存进 val。</p>
+            <p class="tl">第二步：再调用 pop() 把 10 从队列里移除。</p>
+            <p class="tl">现在 val 里存着 10，可以安全使用。</p>
+            <p class="tl">queue 的下一个队头变成了 20。</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="callout callout-warn animate-in">
+        <div class="callout-title">🤔 为什么这样设计？</div>
+        <p>历史原因：如果 pop() 在抛出异常时同时返回值，会导致数据丢失。分开成两步（先 front() 读，再 pop() 删）在异常安全上更可靠。在竞赛里记住：<strong>先 front()，再 pop()</strong>，两步走。</p>
+      </div>
+    </section>
+
+    <!-- Screen 3: 清空队列 -->
+    <section class="screen animate-in">
+      <h2 class="screen-heading">清空队列：没有 clear()，只能 while 循环</h2>
+
+      <div class="translation-block animate-in">
+        <div class="translation-code">
+          <span class="translation-label">CODE</span>
+          <pre><code><span class="code-comment">// queue 没有 clear() 方法！</span>
+<span class="code-keyword">while</span> (<span class="code-operator">!</span>q<span class="code-operator">.</span><span class="code-function">empty</span>()) {
+    q<span class="code-operator">.</span><span class="code-function">pop</span>()<span class="code-operator">;</span>
+}
+
+<span class="code-keyword">if</span> (q<span class="code-operator">.</span><span class="code-function">empty</span>()) {
+    cout <span class="code-operator">&lt;&lt;</span> <span class="code-string">"queue 已空\n"</span><span class="code-operator">;</span>
+}</code></pre>
+        </div>
+        <div class="translation-english">
+          <span class="translation-label">PLAIN ENGLISH</span>
+          <div class="translation-lines">
+            <p class="tl">C++ 的 queue 没有一键清空的 clear()——这是故意的设计选择。</p>
+            <p class="tl">用 while 循环：只要队列不空，就一直 pop()。</p>
+            <p class="tl">直到每个元素都被弹出，循环自然结束。</p>
+            <p class="tl">——</p>
+            <p class="tl">验证：如果 empty() 返回 true，说明清空成功。</p>
+            <p class="tl">打印确认信息。</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="callout callout-success animate-in">
+        <div class="callout-title">✅ 更快的清空技巧（竞赛常用）</div>
+        <p>与其 while 循环，更常见的竞赛写法是直接用赋值覆盖：<code style="font-size:var(--text-sm)">q = queue&lt;int&gt;();</code>——用一个新的空队列替换旧的，O(1) 时间，一行搞定。</p>
+      </div>
+    </section>
+
+    <!-- Screen 4: 群聊动画 -->
+    <section class="screen animate-in">
+      <h2 class="screen-heading">队列内部的"对话"</h2>
+      <p>想象 queue 的各个操作在互相沟通——看看一次完整的使用流程是什么感觉。</p>
+
+      <div class="chat-window">
+        <div class="chat-header">📨 queue&lt;int&gt; 操作日志 — 角色扮演模式</div>
+        <div class="chat-messages" id="q-chat-messages">
+          <div class="chat-message" data-sender="programmer" data-msg="0">
+            <div class="chat-avatar" style="background:var(--color-actor-3)">你</div>
+            <div class="chat-bubble"><span class="chat-sender" style="color:var(--color-actor-3)">程序员</span><p>queue&lt;int&gt; q; — 我创建了一个空队列！</p></div>
+          </div>
+          <div class="chat-message" data-sender="queue" data-msg="1">
+            <div class="chat-avatar" style="background:var(--color-actor-2)">Q</div>
+            <div class="chat-bubble"><span class="chat-sender" style="color:var(--color-actor-2)">Queue</span><p>已就绪。目前空空如也，等你 push。</p></div>
+          </div>
+          <div class="chat-message right" data-sender="programmer" data-msg="2">
+            <div class="chat-avatar" style="background:var(--color-actor-3)">你</div>
+            <div class="chat-bubble"><span class="chat-sender" style="color:var(--color-actor-3)">程序员</span><p>q.push(10); q.push(20); q.push(30);</p></div>
+          </div>
+          <div class="chat-message" data-sender="queue" data-msg="3">
+            <div class="chat-avatar" style="background:var(--color-actor-2)">Q</div>
+            <div class="chat-bubble"><span class="chat-sender" style="color:var(--color-actor-2)">Queue</span><p>收到！我现在长这样：<strong>[10] → [20] → [30]</strong>。10 在队头，30 在队尾。size = 3。</p></div>
+          </div>
+          <div class="chat-message right" data-sender="programmer" data-msg="4">
+            <div class="chat-avatar" style="background:var(--color-actor-3)">你</div>
+            <div class="chat-bubble"><span class="chat-sender" style="color:var(--color-actor-3)">程序员</span><p>q.front() 是多少？</p></div>
+          </div>
+          <div class="chat-message" data-sender="queue" data-msg="5">
+            <div class="chat-avatar" style="background:var(--color-actor-2)">Q</div>
+            <div class="chat-bubble"><span class="chat-sender" style="color:var(--color-actor-2)">Queue</span><p>10。我只让你看，不让你动它。队列不变。</p></div>
+          </div>
+          <div class="chat-message right" data-sender="programmer" data-msg="6">
+            <div class="chat-avatar" style="background:var(--color-actor-3)">你</div>
+            <div class="chat-bubble"><span class="chat-sender" style="color:var(--color-actor-3)">程序员</span><p>int val = q.front(); q.pop();</p></div>
+          </div>
+          <div class="chat-message" data-sender="queue" data-msg="7">
+            <div class="chat-avatar" style="background:var(--color-actor-2)">Q</div>
+            <div class="chat-bubble"><span class="chat-sender" style="color:var(--color-actor-2)">Queue</span><p>val = 10，已存好。10 已出队，我现在是 <strong>[20] → [30]</strong>，size = 2。</p></div>
+          </div>
+        </div>
+        <div class="chat-typing" id="q-chat-typing">
+          <div class="chat-avatar" id="q-typing-avatar" style="background:var(--color-actor-2)">Q</div>
+          <div class="chat-typing-dots">
+            <span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span>
+          </div>
+        </div>
+        <div class="chat-controls">
+          <button class="btn btn-primary btn-sm" onclick="qChatNext()">下一条</button>
+          <button class="btn btn-secondary btn-sm" onclick="qChatAll()">播放全部</button>
+          <button class="btn btn-secondary btn-sm" onclick="qChatReset()">重放</button>
+          <span class="chat-progress" id="q-chat-progress">0 / 8 条</span>
+        </div>
+      </div>
+    </section>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<!-- MODULE 3: 优先队列 -->
+<!-- ══════════════════════════════════════════════════════════ -->
+<section class="module" id="module-3" style="background:var(--color-bg)">
+  <div class="module-content">
+    <header class="module-header animate-in">
+      <span class="module-number">03</span>
+      <h1 class="module-title">优先队列：有特权的队列</h1>
+      <p class="module-subtitle">不是先来先得，而是「最重要的先处理」——这就是堆的哲学。</p>
+    </header>
+
+    <!-- Screen 1: 什么是优先队列 -->
+    <section class="screen animate-in">
+      <h2 class="screen-heading">急诊室，不是地铁站</h2>
+      <p>普通队列就像地铁安检：先来先过，公平无歧视。但急诊室不同——不管你几点挂号，病情最危急的人先被处理。</p>
+      <p><span class="tooltip-term" data-tip="优先队列（Priority Queue）：每次出队不是按「加入时间」，而是按「优先级」决定谁先出。C++ 默认用堆实现，操作时间是 O(log n)。">优先队列</span>就是急诊室：每次 pop，出来的都是当前「最重要」的元素（默认是最大值）。</p>
+
+      <div class="cards stagger-children" style="margin-top:var(--space-8)">
+        <div class="card animate-in">
+          <div class="card-icon">🏥</div>
+          <div class="card-title">急诊优先</div>
+          <div class="card-desc">危重病人优先处理，对应「最大堆」——数值最大的先出。</div>
+        </div>
+        <div class="card animate-in">
+          <div class="card-icon">🗓️</div>
+          <div class="card-title">任务调度</div>
+          <div class="card-desc">截止时间最近的任务先处理，对应「最小堆」——数值最小的先出。</div>
+        </div>
+        <div class="card animate-in">
+          <div class="card-icon">🗺️</div>
+          <div class="card-title">Dijkstra 算法</div>
+          <div class="card-desc">每次从距离最小的节点出发，用最小堆高效实现。</div>
+        </div>
+        <div class="card animate-in">
+          <div class="card-icon">🤑</div>
+          <div class="card-title">贪心策略</div>
+          <div class="card-desc">总是选当前最优的选项——用最大堆快速找到「当前最大」。</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Screen 2: 堆的可视化 -->
+    <section class="screen animate-in">
+      <h2 class="screen-heading">堆长什么样？</h2>
+      <p><span class="tooltip-term" data-tip="堆（Heap）：一种完全二叉树，父节点总比子节点大（最大堆）或小（最小堆）。C++ 的 priority_queue 底层就是堆，push/pop 都是 O(log n)。">堆</span>是 priority_queue 的底层结构。它是一棵<span class="tooltip-term" data-tip="完全二叉树（Complete Binary Tree）：每层都填满（除了最后一层），最后一层从左往右填。堆用数组模拟这棵树，不需要真正的指针。">完全二叉树</span>，规则是：父节点的值永远 ≥ 子节点（最大堆）。</p>
+
+      <div class="heap-vis animate-in">
+        <div class="heap-label">最大堆示意图 — 根节点始终是最大值</div>
+        <div class="heap-tree" id="heap-tree-vis">
+          <div class="heap-row">
+            <div class="heap-node heap-node-max heap-node-root" id="hn-root" title="堆顶（最大值）">50</div>
+          </div>
+          <div class="heap-row">
+            <div class="heap-node heap-node-max" id="hn-l">30</div>
+            <div class="heap-node heap-node-max" id="hn-r">20</div>
+          </div>
+          <div class="heap-row">
+            <div class="heap-node heap-node-max" id="hn-ll">10</div>
+            <div class="heap-node heap-node-max" id="hn-lr">15</div>
+          </div>
+        </div>
+        <div class="heap-caption">push 了 30, 10, 50, 20 之后，堆自动把 50 浮到顶部</div>
+        <div style="display:flex;gap:var(--space-3);justify-content:center;flex-wrap:wrap">
+          <button class="btn btn-primary btn-sm" onclick="heapDemoPop()">pop() 删除堆顶</button>
+          <button class="btn btn-secondary btn-sm" onclick="heapDemoReset()">重置</button>
+        </div>
+        <div id="heap-demo-info" style="text-align:center;font-family:var(--font-mono);font-size:var(--text-xs);color:var(--color-text-muted);margin-top:var(--space-3)">top = 50 &nbsp;|&nbsp; size = 5</div>
+      </div>
+    </section>
+
+    <!-- Screen 3: 最大堆代码翻译 -->
+    <section class="screen animate-in">
+      <h2 class="screen-heading">priority_queue 代码翻译</h2>
+
+      <div class="translation-block animate-in">
+        <div class="translation-code">
+          <span class="translation-label">CODE</span>
+          <pre><code><span class="code-comment">// 最大堆（默认）：值最大的先出</span>
+<span class="code-type">priority_queue</span><span class="code-operator">&lt;</span><span class="code-keyword">int</span><span class="code-operator">&gt;</span> pq<span class="code-operator">;</span>
+
+pq<span class="code-operator">.</span><span class="code-function">push</span>(<span class="code-number">30</span>)<span class="code-operator">;</span>
+pq<span class="code-operator">.</span><span class="code-function">push</span>(<span class="code-number">10</span>)<span class="code-operator">;</span>
+pq<span class="code-operator">.</span><span class="code-function">push</span>(<span class="code-number">50</span>)<span class="code-operator">;</span>
+pq<span class="code-operator">.</span><span class="code-function">push</span>(<span class="code-number">20</span>)<span class="code-operator">;</span>
+
+cout <span class="code-operator">&lt;&lt;</span> pq<span class="code-operator">.</span><span class="code-function">top</span>()<span class="code-operator">;</span>   <span class="code-comment">// 50</span>
+
+<span class="code-keyword">int</span> val <span class="code-operator">=</span> pq<span class="code-operator">.</span><span class="code-function">top</span>()<span class="code-operator">;</span>
+pq<span class="code-operator">.</span><span class="code-function">pop</span>()<span class="code-operator">;</span>
+cout <span class="code-operator">&lt;&lt;</span> pq<span class="code-operator">.</span><span class="code-function">top</span>()<span class="code-operator">;</span>  <span class="code-comment">// 30</span></code></pre>
+        </div>
+        <div class="translation-english">
+          <span class="translation-label">PLAIN ENGLISH</span>
+          <div class="translation-lines">
+            <p class="tl">创建一个最大堆。不写额外参数，默认就是最大堆。</p>
+            <p class="tl">依次加入 30、10、50、20 四个数。</p>
+            <p class="tl">堆内部自动重排，把最大值 50 放到顶部。</p>
+            <p class="tl">进入的顺序无所谓——每次都是最大值在上面。</p>
+            <p class="tl">——</p>
+            <p class="tl">top() 查看堆顶，答：50（最大值），不删除。</p>
+            <p class="tl">先用 top() 把 50 存到 val，再 pop() 删除它。</p>
+            <p class="tl">50 走了，下一个最大值 30 浮到顶部。</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="callout animate-in">
+        <div class="callout-title">💡 queue vs priority_queue：接口差异</div>
+        <p>注意：<code>queue</code> 用 <code>front()</code> 看队头；<code>priority_queue</code> 用 <code>top()</code> 看堆顶。别混了！两者都用 <code>push()</code> 和 <code>pop()</code>，这是相同的。</p>
+      </div>
+    </section>
+
+    <!-- Screen 4: 数据流动画 -->
+    <section class="screen animate-in">
+      <h2 class="screen-heading">数据是怎么流动的？</h2>
+      <p>看看 push(50) 之后，堆怎么把 50 「上浮」到顶部。</p>
+
+      <div class="flow-animation">
+        <div class="flow-actors">
+          <div class="flow-actor" id="fa-you">
+            <div class="flow-actor-icon" style="background:var(--color-actor-3)">你</div>
+            <span>程序员</span>
+          </div>
+          <div style="height:2px;flex:1;background:var(--color-border);align-self:center;margin-bottom:20px" id="fc-1"></div>
+          <div class="flow-actor" id="fa-heap">
+            <div class="flow-actor-icon" style="background:var(--color-actor-1)">堆</div>
+            <span>priority_queue</span>
+          </div>
+          <div style="height:2px;flex:1;background:var(--color-border);align-self:center;margin-bottom:20px" id="fc-2"></div>
+          <div class="flow-actor" id="fa-tree">
+            <div class="flow-actor-icon" style="background:var(--color-actor-5)">树</div>
+            <span>内部数组</span>
+          </div>
+        </div>
+        <div class="flow-step-label" id="flow-q-label">点击「下一步」，看 push(50) 的完整过程</div>
+        <div class="flow-controls">
+          <button class="btn btn-primary btn-sm" onclick="flowQNext()">下一步</button>
+          <button class="btn btn-secondary btn-sm" onclick="flowQReset()">重来</button>
+          <span class="flow-progress" id="flow-q-progress">步骤 0 / 5</span>
+        </div>
+      </div>
+    </section>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<!-- MODULE 4: 最小堆 -->
+<!-- ══════════════════════════════════════════════════════════ -->
+<section class="module" id="module-4" style="background:var(--color-bg-warm)">
+  <div class="module-content">
+    <header class="module-header animate-in">
+      <span class="module-number">04</span>
+      <h1 class="module-title">最小堆：反转优先级</h1>
+      <p class="module-subtitle">三个模板参数，一行代码反转世界——以及什么时候该用最小堆。</p>
+    </header>
+
+    <!-- Screen 1: greater 的含义 -->
+    <section class="screen animate-in">
+      <h2 class="screen-heading">那三个参数是什么意思？</h2>
+      <p>最小堆的声明方式是竞赛里公认的「背下来」写法：</p>
+
+      <div class="translation-block animate-in">
+        <div class="translation-code">
+          <span class="translation-label">CODE</span>
+          <pre><code><span class="code-comment">// 最小堆：值最小的先出</span>
+<span class="code-type">priority_queue</span><span class="code-operator">&lt;</span>
+  <span class="code-keyword">int</span><span class="code-operator">,</span>
+  <span class="code-type">vector</span><span class="code-operator">&lt;</span><span class="code-keyword">int</span><span class="code-operator">&gt;,</span>
+  <span class="code-type">greater</span><span class="code-operator">&lt;</span><span class="code-keyword">int</span><span class="code-operator">&gt;</span>
+<span class="code-operator">&gt;</span> pq2<span class="code-operator">;</span>
+
+pq2<span class="code-operator">.</span><span class="code-function">push</span>(<span class="code-number">30</span>)<span class="code-operator">;</span>
+pq2<span class="code-operator">.</span><span class="code-function">push</span>(<span class="code-number">10</span>)<span class="code-operator">;</span>
+pq2<span class="code-operator">.</span><span class="code-function">push</span>(<span class="code-number">50</span>)<span class="code-operator">;</span>
+pq2<span class="code-operator">.</span><span class="code-function">push</span>(<span class="code-number">20</span>)<span class="code-operator">;</span>
+
+cout <span class="code-operator">&lt;&lt;</span> pq2<span class="code-operator">.</span><span class="code-function">top</span>()<span class="code-operator">;</span>   <span class="code-comment">// 10！最小的</span>
+pq2<span class="code-operator">.</span><span class="code-function">pop</span>()<span class="code-operator">;</span>
+cout <span class="code-operator">&lt;&lt;</span> pq2<span class="code-operator">.</span><span class="code-function">top</span>()<span class="code-operator">;</span>   <span class="code-comment">// 20</span></code></pre>
+        </div>
+        <div class="translation-english">
+          <span class="translation-label">PLAIN ENGLISH</span>
+          <div class="translation-lines">
+            <p class="tl">声明一个最小堆，需要写三个模板参数：</p>
+            <p class="tl"><strong>第 1 个</strong>：int — 存什么类型的数据。</p>
+            <p class="tl"><strong>第 2 个</strong>：vector&lt;int&gt; — 底层用什么容器存（固定写 vector&lt;T&gt;）。</p>
+            <p class="tl"><strong>第 3 个</strong>：greater&lt;int&gt; — 比较器，告诉堆「较大的优先级较低」，从而反转成最小堆。</p>
+            <p class="tl">——</p>
+            <p class="tl">加入 30、10、50、20，堆把 10 推到顶部。</p>
+            <p class="tl">top() 返回 10（最小值）。pop() 删除后，20 变成堆顶。</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Screen 2: 并排对比 -->
+    <section class="screen animate-in">
+      <h2 class="screen-heading">最大堆 vs 最小堆：直观对比</h2>
+      <p>同样加入 {30, 10, 50, 20}，两种堆的出队顺序完全相反：</p>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-6);margin:var(--space-8) 0">
+        <div style="background:var(--color-surface);border-radius:var(--radius-md);padding:var(--space-5);box-shadow:var(--shadow-md);border-top:4px solid var(--color-actor-1)">
+          <div style="font-family:var(--font-display);font-weight:700;font-size:var(--text-base);margin-bottom:var(--space-3);color:var(--color-actor-1)">最大堆</div>
+          <div style="font-family:var(--font-mono);font-size:var(--text-xs);color:var(--color-text-muted);margin-bottom:var(--space-3)">priority_queue&lt;int&gt;</div>
+          <div style="display:flex;flex-direction:column;gap:var(--space-2)" id="max-heap-demo">
+            <div style="display:flex;align-items:center;gap:var(--space-2);padding:var(--space-2) var(--space-3);background:#FEF0EC;border-radius:var(--radius-sm);font-family:var(--font-mono);font-size:var(--text-sm)"><span style="width:20px;height:20px;border-radius:50%;background:var(--color-actor-1);color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700">1</span> 先出：50</div>
+            <div style="display:flex;align-items:center;gap:var(--space-2);padding:var(--space-2) var(--space-3);background:var(--color-surface-warm);border-radius:var(--radius-sm);font-family:var(--font-mono);font-size:var(--text-sm)"><span style="width:20px;height:20px;border-radius:50%;background:var(--color-border);color:var(--color-text-secondary);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700">2</span> 其次：30</div>
+            <div style="display:flex;align-items:center;gap:var(--space-2);padding:var(--space-2) var(--space-3);background:var(--color-surface-warm);border-radius:var(--radius-sm);font-family:var(--font-mono);font-size:var(--text-sm)"><span style="width:20px;height:20px;border-radius:50%;background:var(--color-border);color:var(--color-text-secondary);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700">3</span> 然后：20</div>
+            <div style="display:flex;align-items:center;gap:var(--space-2);padding:var(--space-2) var(--space-3);background:var(--color-surface-warm);border-radius:var(--radius-sm);font-family:var(--font-mono);font-size:var(--text-sm)"><span style="width:20px;height:20px;border-radius:50%;background:var(--color-border);color:var(--color-text-secondary);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700">4</span> 最后：10</div>
+          </div>
+        </div>
+        <div style="background:var(--color-surface);border-radius:var(--radius-md);padding:var(--space-5);box-shadow:var(--shadow-md);border-top:4px solid var(--color-actor-2)">
+          <div style="font-family:var(--font-display);font-weight:700;font-size:var(--text-base);margin-bottom:var(--space-3);color:var(--color-actor-2)">最小堆</div>
+          <div style="font-family:var(--font-mono);font-size:var(--text-xs);color:var(--color-text-muted);margin-bottom:var(--space-3)">priority_queue&lt;int,vector&lt;int&gt;,greater&lt;int&gt;&gt;</div>
+          <div style="display:flex;flex-direction:column;gap:var(--space-2)">
+            <div style="display:flex;align-items:center;gap:var(--space-2);padding:var(--space-2) var(--space-3);background:var(--color-accent-light);border-radius:var(--radius-sm);font-family:var(--font-mono);font-size:var(--text-sm)"><span style="width:20px;height:20px;border-radius:50%;background:var(--color-actor-2);color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700">1</span> 先出：10</div>
+            <div style="display:flex;align-items:center;gap:var(--space-2);padding:var(--space-2) var(--space-3);background:var(--color-surface-warm);border-radius:var(--radius-sm);font-family:var(--font-mono);font-size:var(--text-sm)"><span style="width:20px;height:20px;border-radius:50%;background:var(--color-border);color:var(--color-text-secondary);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700">2</span> 其次：20</div>
+            <div style="display:flex;align-items:center;gap:var(--space-2);padding:var(--space-2) var(--space-3);background:var(--color-surface-warm);border-radius:var(--radius-sm);font-family:var(--font-mono);font-size:var(--text-sm)"><span style="width:20px;height:20px;border-radius:50%;background:var(--color-border);color:var(--color-text-secondary);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700">3</span> 然后：30</div>
+            <div style="display:flex;align-items:center;gap:var(--space-2);padding:var(--space-2) var(--space-3);background:var(--color-surface-warm);border-radius:var(--radius-sm);font-family:var(--font-mono);font-size:var(--text-sm)"><span style="width:20px;height:20px;border-radius:50%;background:var(--color-border);color:var(--color-text-secondary);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700">4</span> 最后：50</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="callout animate-in">
+        <div class="callout-title">🎯 竞赛速记口诀</div>
+        <p>默认 = 最大堆（大的先出）。<br>加 <code>greater&lt;T&gt;</code> = 最小堆（小的先出）。<br>Dijkstra、最短路 → 最小堆。贪心取最大 → 最大堆。</p>
+      </div>
+    </section>
+
+    <!-- Screen 3: 选哪个？ -->
+    <section class="screen animate-in">
+      <h2 class="screen-heading">看题目，选结构</h2>
+
+      <div class="step-cards stagger-children">
+        <div class="step-card animate-in">
+          <div class="step-num">?</div>
+          <div class="step-content">
+            <div class="step-title">题目要求「每次取最大值」</div>
+            <div class="step-desc">→ 直接用 <code>priority_queue&lt;int&gt;</code>，默认最大堆，top() 就是最大值。</div>
+          </div>
+        </div>
+        <div class="step-card animate-in">
+          <div class="step-num">?</div>
+          <div class="step-content">
+            <div class="step-title">题目要求「每次取最小值」</div>
+            <div class="step-desc">→ 用 <code>priority_queue&lt;int, vector&lt;int&gt;, greater&lt;int&gt;&gt;</code>，最小堆。</div>
+          </div>
+        </div>
+        <div class="step-card animate-in">
+          <div class="step-num">?</div>
+          <div class="step-content">
+            <div class="step-title">BFS（广度优先搜索）</div>
+            <div class="step-desc">→ 用普通 <code>queue</code>，不需要优先级，只需要 FIFO 顺序。</div>
+          </div>
+        </div>
+        <div class="step-card animate-in">
+          <div class="step-num">?</div>
+          <div class="step-content">
+            <div class="step-title">Dijkstra 最短路</div>
+            <div class="step-desc">→ 用最小堆，每次弹出距离最小的节点扩展，O((V+E) log V)。</div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<!-- MODULE 5: 测验 & 总结 -->
+<!-- ══════════════════════════════════════════════════════════ -->
+<section class="module" id="module-5" style="background:var(--color-bg)">
+  <div class="module-content">
+    <header class="module-header animate-in">
+      <span class="module-number">05</span>
+      <h1 class="module-title">测验 & 全局视图</h1>
+      <p class="module-subtitle">把所学的东西用到新场景上——这才是真正掌握了。</p>
+    </header>
+
+    <!-- Screen 1: Quiz -->
+    <section class="screen animate-in">
+      <h2 class="screen-heading">场景应用测验</h2>
+
+      <div class="quiz-container">
+        <div class="quiz-title">遇到新问题，你会怎么选？</div>
+
+        <!-- Q1 -->
+        <div class="quiz-question-block" id="q1-block" data-correct="opt-b"
+             data-explain-correct="对！BFS 需要严格的先进先出（FIFO），普通队列正是为此设计的。优先队列会打乱层次顺序。"
+             data-explain-wrong="BFS 的核心是「逐层扩展」，必须先处理先发现的节点。优先队列会按值排序而非按发现顺序——这会破坏 BFS 的正确性。">
+          <div class="quiz-q-label">问题 01</div>
+          <h3 class="quiz-question">你在写一道迷宫最短路题，需要 BFS。应该用哪个数据结构？</h3>
+          <div class="quiz-options">
+            <button class="quiz-option" data-value="opt-a" onclick="selectOption(this)"><div class="quiz-option-radio"></div><span>priority_queue&lt;int&gt;（最大堆）</span></button>
+            <button class="quiz-option" data-value="opt-b" onclick="selectOption(this)"><div class="quiz-option-radio"></div><span>queue&lt;int&gt;（普通队列）</span></button>
+            <button class="quiz-option" data-value="opt-c" onclick="selectOption(this)"><div class="quiz-option-radio"></div><span>priority_queue 配合 greater&lt;int&gt;（最小堆）</span></button>
+          </div>
+          <div class="quiz-feedback" id="q1-feedback"></div>
+        </div>
+
+        <div class="quiz-divider"></div>
+
+        <!-- Q2 -->
+        <div class="quiz-question-block" id="q2-block" data-correct="opt-b"
+             data-explain-correct="对！pop() 不返回值，必须先 top() 取值，再 pop() 删除。这是 C++ STL 的固定设计。"
+             data-explain-wrong="在 C++ 中，priority_queue 的 pop() 不返回值，直接调用只会删除堆顶而丢失数据。正确做法是先 top() 取值，再 pop() 删除。">
+          <div class="quiz-q-label">问题 02</div>
+          <h3 class="quiz-question">你想取出 priority_queue 的堆顶值并删除它，下面哪种写法是正确的？</h3>
+          <div class="quiz-options">
+            <button class="quiz-option" data-value="opt-a" onclick="selectOption(this)"><div class="quiz-option-radio"></div><span>int x = pq.pop();</span></button>
+            <button class="quiz-option" data-value="opt-b" onclick="selectOption(this)"><div class="quiz-option-radio"></div><span>int x = pq.top(); pq.pop();</span></button>
+            <button class="quiz-option" data-value="opt-c" onclick="selectOption(this)"><div class="quiz-option-radio"></div><span>int x = pq.front(); pq.pop();</span></button>
+          </div>
+          <div class="quiz-feedback" id="q2-feedback"></div>
+        </div>
+
+        <div class="quiz-divider"></div>
+
+        <!-- Q3 -->
+        <div class="quiz-question-block" id="q3-block" data-correct="opt-c"
+             data-explain-correct="完全正确！Dijkstra 每次要取「当前距离最短的节点」，最小堆保证 top() 就是最短距离节点，O(log n) 弹出。"
+             data-explain-wrong="Dijkstra 的核心是「每次选距离最短的未访问节点」。最大堆会先选距离最大的——这会给出错误答案。应该用最小堆（greater&lt;int&gt;）。">
+          <div class="quiz-q-label">问题 03</div>
+          <h3 class="quiz-question">写 Dijkstra 最短路算法，每次要弹出「当前路径最短的节点」。应该用哪种堆？</h3>
+          <div class="quiz-options">
+            <button class="quiz-option" data-value="opt-a" onclick="selectOption(this)"><div class="quiz-option-radio"></div><span>普通 queue&lt;int&gt;</span></button>
+            <button class="quiz-option" data-value="opt-b" onclick="selectOption(this)"><div class="quiz-option-radio"></div><span>priority_queue&lt;int&gt;（最大堆）</span></button>
+            <button class="quiz-option" data-value="opt-c" onclick="selectOption(this)"><div class="quiz-option-radio"></div><span>priority_queue&lt;int, vector&lt;int&gt;, greater&lt;int&gt;&gt;（最小堆）</span></button>
+          </div>
+          <div class="quiz-feedback" id="q3-feedback"></div>
+        </div>
+
+        <div class="quiz-divider"></div>
+
+        <!-- Q4 -->
+        <div class="quiz-question-block" id="q4-block" data-correct="opt-a"
+             data-explain-correct="对！queue 没有 clear() 方法，只能用 while(!q.empty()) q.pop(); 循环清空。或者用赋值 q = queue&lt;int&gt;() 覆盖（竞赛更常用）。"
+             data-explain-wrong="queue 没有 clear() 方法——调用 q.clear() 会编译报错。正确方法是 while(!q.empty()) q.pop(); 或者直接赋值一个新的空队列。">
+          <div class="quiz-q-label">问题 04</div>
+          <h3 class="quiz-question">你需要在一道多组数据的题里，每次清空 queue。下面哪种做法能编译通过？</h3>
+          <div class="quiz-options">
+            <button class="quiz-option" data-value="opt-a" onclick="selectOption(this)"><div class="quiz-option-radio"></div><span>while (!q.empty()) q.pop();</span></button>
+            <button class="quiz-option" data-value="opt-b" onclick="selectOption(this)"><div class="quiz-option-radio"></div><span>q.clear();</span></button>
+            <button class="quiz-option" data-value="opt-c" onclick="selectOption(this)"><div class="quiz-option-radio"></div><span>q.flush();</span></button>
+          </div>
+          <div class="quiz-feedback" id="q4-feedback"></div>
+        </div>
+
+        <div class="quiz-actions">
+          <button class="btn btn-primary" onclick="checkAllQuiz()">提交答案</button>
+          <button class="btn btn-secondary" onclick="resetAllQuiz()">重新作答</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Screen 2: 全局速查表 -->
+    <section class="screen animate-in">
+      <h2 class="screen-heading">速查表：一眼找到你要的操作</h2>
+
+      <table class="compare-table">
+        <thead>
+          <tr>
+            <th>操作</th>
+            <th>queue&lt;T&gt;</th>
+            <th>priority_queue&lt;T&gt;</th>
+            <th>时间复杂度</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>加入元素</td><td><code>push(x)</code></td><td><code>push(x)</code></td><td>O(1) / O(log n)</td></tr>
+          <tr><td>看队头/堆顶</td><td><code>front()</code></td><td><code>top()</code></td><td>O(1)</td></tr>
+          <tr><td>看队尾</td><td><code>back()</code></td><td>❌ 不支持</td><td>O(1)</td></tr>
+          <tr><td>删除头部</td><td><code>pop()</code></td><td><code>pop()</code></td><td>O(1) / O(log n)</td></tr>
+          <tr><td>元素个数</td><td><code>size()</code></td><td><code>size()</code></td><td>O(1)</td></tr>
+          <tr><td>是否为空</td><td><code>empty()</code></td><td><code>empty()</code></td><td>O(1)</td></tr>
+          <tr><td>清空</td><td>while 循环</td><td>while 循环</td><td>O(n)</td></tr>
+          <tr><td>最大值在顶</td><td>❌</td><td>✅ 默认</td><td>—</td></tr>
+          <tr><td>最小值在顶</td><td>❌</td><td>✅ 加 greater</td><td>—</td></tr>
+        </tbody>
+      </table>
+
+      <div class="callout callout-success animate-in" style="margin-top:var(--space-8)">
+        <div class="callout-title">🎓 你现在掌握了什么？</div>
+        <p>
+          ✅ 理解 FIFO 队列的工作原理，能用 queue&lt;T&gt; 的全部六个操作<br>
+          ✅ 知道 pop() 不返回值，要先 front()/top() 再 pop()<br>
+          ✅ 知道 priority_queue 是堆，默认最大堆<br>
+          ✅ 能写最小堆声明，三个模板参数一个不少<br>
+          ✅ 能根据题意选择 queue 还是 priority_queue（最大/最小堆）
+        </p>
+      </div>
+    </section>
+  </div>
+</section>
+
+<!-- TOOLTIP POPUP -->
+<div class="tooltip-popup" id="tooltip-popup"></div>
+
+<script>
+(function() {
+  'use strict';
+
+  // ─── PROGRESS BAR ───────────────────────────────────────────
+  const progressBar = document.getElementById('progress-bar');
+  function updateProgressBar() {
+    const scrollTop = window.scrollY;
+    const scrollHeight = document.documentElement.scrollHeight - window.innerHeight;
+    if (scrollHeight <= 0) return;
+    progressBar.style.width = (scrollTop / scrollHeight * 100) + '%';
+  }
+  window.addEventListener('scroll', () => requestAnimationFrame(updateProgressBar), { passive: true });
+
+  // ─── ANIMATE IN ─────────────────────────────────────────────
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.classList.add('visible');
+        observer.unobserve(e.target);
+      }
+    });
+  }, { rootMargin: '0px 0px -8% 0px', threshold: 0.08 });
+  document.querySelectorAll('.animate-in').forEach(el => observer.observe(el));
+
+  // ─── NAV DOTS ────────────────────────────────────────────────
+  const dots = document.querySelectorAll('.nav-dot');
+  const modules = document.querySelectorAll('.module');
+  const moduleObserver = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        const id = e.target.id;
+        dots.forEach(d => {
+          if (d.dataset.target === id) {
+            d.classList.add('current');
+            d.classList.add('visited');
+          } else {
+            d.classList.remove('current');
+          }
+        });
+      }
+    });
+  }, { threshold: 0.4 });
+  modules.forEach(m => moduleObserver.observe(m));
+
+  dots.forEach(dot => {
+    dot.addEventListener('click', () => {
+      const target = document.getElementById(dot.dataset.target);
+      if (target) target.scrollIntoView({ behavior: 'smooth' });
+    });
+  });
+
+  // ─── KEYBOARD NAV ────────────────────────────────────────────
+  let currentModuleIndex = 0;
+  document.addEventListener('keydown', (e) => {
+    if (['INPUT','TEXTAREA'].includes(e.target.tagName)) return;
+    if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
+      currentModuleIndex = Math.min(currentModuleIndex + 1, modules.length - 1);
+      modules[currentModuleIndex].scrollIntoView({ behavior: 'smooth' });
+      e.preventDefault();
+    }
+    if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+      currentModuleIndex = Math.max(currentModuleIndex - 1, 0);
+      modules[currentModuleIndex].scrollIntoView({ behavior: 'smooth' });
+      e.preventDefault();
+    }
+  });
+
+  // ─── TOOLTIPS ───────────────────────────────────────────────
+  const tooltipEl = document.getElementById('tooltip-popup');
+  document.querySelectorAll('.tooltip-term').forEach(term => {
+    term.addEventListener('mouseenter', (e) => {
+      const rect = term.getBoundingClientRect();
+      tooltipEl.textContent = term.dataset.tip;
+      tooltipEl.style.left = Math.min(rect.left, window.innerWidth - 300) + 'px';
+      tooltipEl.style.top = (rect.top - tooltipEl.offsetHeight - 10 + window.scrollY) + 'px';
+      // position fixed relative to viewport
+      tooltipEl.style.top = (rect.top - 60) + 'px';
+      tooltipEl.classList.add('visible');
+    });
+    term.addEventListener('mouseleave', () => tooltipEl.classList.remove('visible'));
+    term.addEventListener('click', (e) => {
+      const rect = term.getBoundingClientRect();
+      tooltipEl.textContent = term.dataset.tip;
+      tooltipEl.style.left = Math.min(rect.left, window.innerWidth - 300) + 'px';
+      tooltipEl.style.top = (rect.top - 60) + 'px';
+      tooltipEl.classList.add('visible');
+      setTimeout(() => tooltipEl.classList.remove('visible'), 3000);
+    });
+  });
+
+  // ─── DEMO QUEUE ──────────────────────────────────────────────
+  let demoQueue = [];
+  function renderDemoQueue() {
+    const track = document.getElementById('demo-queue-track');
+    const hint = document.getElementById('demo-empty-hint');
+    const info = document.getElementById('demo-info');
+    track.innerHTML = '';
+    if (demoQueue.length === 0) {
+      hint.style.display = 'block';
+      track.appendChild(hint);
+    } else {
+      hint.style.display = 'none';
+      // Right side label
+      const label = document.createElement('span');
+      label.style.cssText = 'font-size:0.65rem;font-family:var(--font-mono);color:var(--color-text-muted);writing-mode:horizontal-tb;margin-right:8px;align-self:center';
+      label.textContent = '← 尾';
+      track.appendChild(label);
+      // Items right to left (new at left = back, old at right = front)
+      demoQueue.forEach((v, i) => {
+        const item = document.createElement('div');
+        item.className = 'queue-item ' + (i === 0 ? 'queue-item-head' : 'queue-item-normal');
+        item.textContent = v;
+        item.title = i === 0 ? '队头 front()' : '';
+        track.appendChild(item);
+      });
+      const labelR = document.createElement('span');
+      labelR.style.cssText = 'font-size:0.65rem;font-family:var(--font-mono);color:var(--color-text-muted);margin-left:auto;align-self:center';
+      labelR.textContent = '头 →';
+      track.appendChild(labelR);
+    }
+    info.innerHTML = `size: ${demoQueue.length} &nbsp;|&nbsp; empty: ${demoQueue.length === 0}` +
+      (demoQueue.length > 0 ? ` &nbsp;|&nbsp; front: <strong>${demoQueue[0]}</strong> &nbsp;|&nbsp; back: <strong>${demoQueue[demoQueue.length-1]}</strong>` : '');
+  }
+  function setLog(msg) {
+    document.getElementById('demo-log').textContent = '> ' + msg;
+  }
+  window.demoPush = function() {
+    const v = parseInt(document.getElementById('demo-input').value);
+    if (isNaN(v)) { setLog('请输入一个数字'); return; }
+    demoQueue.push(v);
+    renderDemoQueue();
+    setLog(`push(${v}) ✓ — 加到队尾`);
+  };
+  window.demoPop = function() {
+    if (demoQueue.length === 0) { setLog('队列已空，无法 pop()'); return; }
+    const v = demoQueue.shift();
+    renderDemoQueue();
+    setLog(`pop() ✓ — 删除了队头元素 ${v}`);
+  };
+  window.demoFront = function() {
+    if (demoQueue.length === 0) { setLog('队列已空'); return; }
+    setLog(`front() = ${demoQueue[0]} （只读取，不删除）`);
+  };
+  window.demoBack = function() {
+    if (demoQueue.length === 0) { setLog('队列已空'); return; }
+    setLog(`back() = ${demoQueue[demoQueue.length-1]} （只读取，不删除）`);
+  };
+  window.demoClear = function() {
+    demoQueue = [];
+    renderDemoQueue();
+    setLog('清空完成');
+  };
+  renderDemoQueue();
+
+  // ─── CHAT: QUEUE ─────────────────────────────────────────────
+  let qChatIdx = 0;
+  const qMsgs = document.querySelectorAll('#q-chat-messages .chat-message');
+  const qTyping = document.getElementById('q-chat-typing');
+  const qTypingAvatar = document.getElementById('q-typing-avatar');
+  const actorColors = { programmer: 'var(--color-actor-3)', queue: 'var(--color-actor-2)' };
+
+  function qUpdateProgress() {
+    document.getElementById('q-chat-progress').textContent = qChatIdx + ' / ' + qMsgs.length + ' 条';
+  }
+  window.qChatNext = function() {
+    if (qChatIdx >= qMsgs.length) return;
+    const msg = qMsgs[qChatIdx];
+    const sender = msg.dataset.sender;
+    qTypingAvatar.textContent = sender === 'queue' ? 'Q' : '你';
+    qTypingAvatar.style.background = actorColors[sender] || 'var(--color-actor-2)';
+    qTyping.style.display = 'flex';
+    setTimeout(() => {
+      qTyping.style.display = 'none';
+      msg.style.display = 'flex';
+      msg.style.animation = 'fadeSlideUp 0.3s var(--ease-out)';
+      qChatIdx++;
+      qUpdateProgress();
+    }, 700);
+  };
+  window.qChatAll = function() {
+    const iv = setInterval(() => {
+      if (qChatIdx >= qMsgs.length) { clearInterval(iv); return; }
+      qChatNext();
+    }, 1300);
+  };
+  window.qChatReset = function() {
+    qChatIdx = 0;
+    qMsgs.forEach(m => { m.style.display = 'none'; m.style.animation = ''; });
+    qTyping.style.display = 'none';
+    qUpdateProgress();
+  };
+  qUpdateProgress();
+
+  // ─── HEAP DEMO ───────────────────────────────────────────────
+  const heapStates = [
+    { nodes: [50,30,20,10,15], info: 'top = 50  |  size = 5' },
+    { nodes: [30,15,20,10],    info: 'pop() — 删除了 50。top = 30  |  size = 4' },
+    { nodes: [20,15,10],       info: 'pop() — 删除了 30。top = 20  |  size = 3' },
+    { nodes: [15,10],          info: 'pop() — 删除了 20。top = 15  |  size = 2' },
+  ];
+  let heapState = 0;
+  function renderHeap() {
+    const nodes = heapStates[heapState].nodes;
+    const rows = [
+      [document.getElementById('hn-root')],
+      [document.getElementById('hn-l'), document.getElementById('hn-r')],
+      [document.getElementById('hn-ll'), document.getElementById('hn-lr')],
+    ];
+    let i = 0;
+    rows.forEach(row => row.forEach(node => {
+      if (node) {
+        if (i < nodes.length) {
+          node.textContent = nodes[i];
+          node.className = 'heap-node heap-node-max' + (i === 0 ? ' heap-node-root' : '');
+        } else {
+          node.textContent = '';
+          node.className = 'heap-node heap-node-max heap-node-dim';
+        }
+        i++;
+      }
+    }));
+    document.getElementById('heap-demo-info').textContent = heapStates[heapState].info;
+  }
+  window.heapDemoPop = function() {
+    if (heapState < heapStates.length - 1) heapState++;
+    renderHeap();
+  };
+  window.heapDemoReset = function() { heapState = 0; renderHeap(); };
+  renderHeap();
+
+  // ─── FLOW ANIMATION ──────────────────────────────────────────
+  const flowSteps = [
+    { actor: 'fa-you', label: '你调用 pq.push(50)——程序把 50 传给 priority_queue 容器。' },
+    { actor: 'fa-heap', label: 'priority_queue 收到 50，把它追加到内部数组的末尾：[30,10,20,50]。' },
+    { actor: 'fa-tree', label: '内部数组开始「上浮」操作：50 和父节点 10 比较，50 更大，交换位置。' },
+    { actor: 'fa-tree', label: '继续上浮：50 和根节点 30 比较，50 更大，再次交换。数组变为 [50,10,30,20]。' },
+    { actor: 'fa-heap', label: '上浮完成！50 到达堆顶，pq.top() = 50，符合最大堆规则。' },
+  ];
+  let flowIdx = 0;
+  window.flowQNext = function() {
+    if (flowIdx >= flowSteps.length) return;
+    document.querySelectorAll('.flow-actor').forEach(a => a.classList.remove('active'));
+    const step = flowSteps[flowIdx];
+    const actorEl = document.getElementById(step.actor);
+    if (actorEl) actorEl.classList.add('active');
+    document.getElementById('flow-q-label').textContent = step.label;
+    document.getElementById('flow-q-progress').textContent = '步骤 ' + (flowIdx+1) + ' / ' + flowSteps.length;
+    flowIdx++;
+  };
+  window.flowQReset = function() {
+    flowIdx = 0;
+    document.querySelectorAll('.flow-actor').forEach(a => a.classList.remove('active'));
+    document.getElementById('flow-q-label').textContent = '点击「下一步」，看 push(50) 的完整过程';
+    document.getElementById('flow-q-progress').textContent = '步骤 0 / ' + flowSteps.length;
+  };
+
+  // ─── QUIZ ────────────────────────────────────────────────────
+  window.selectOption = function(btn) {
+    const block = btn.closest('.quiz-question-block');
+    block.querySelectorAll('.quiz-option').forEach(o => o.classList.remove('selected'));
+    btn.classList.add('selected');
+  };
+
+  window.checkAllQuiz = function() {
+    ['q1-block','q2-block','q3-block','q4-block'].forEach(id => {
+      const block = document.getElementById(id);
+      if (!block) return;
+      const selected = block.querySelector('.quiz-option.selected');
+      const feedback = block.querySelector('.quiz-feedback');
+      const correct = block.dataset.correct;
+      if (!selected) {
+        feedback.textContent = '还没有选择答案！';
+        feedback.className = 'quiz-feedback show warning';
+        return;
+      }
+      block.querySelectorAll('.quiz-option').forEach(o => o.disabled = true);
+      if (selected.dataset.value === correct) {
+        selected.classList.add('correct');
+        feedback.innerHTML = '<strong>✓ 正确！</strong> ' + block.dataset.explainCorrect;
+        feedback.className = 'quiz-feedback show success';
+      } else {
+        selected.classList.add('incorrect');
+        const correctBtn = block.querySelector(`[data-value="${correct}"]`);
+        if (correctBtn) correctBtn.classList.add('correct');
+        feedback.innerHTML = '<strong>✗ 再想想。</strong> ' + block.dataset.explainWrong;
+        feedback.className = 'quiz-feedback show error';
+      }
+    });
+  };
+
+  window.resetAllQuiz = function() {
+    ['q1-block','q2-block','q3-block','q4-block'].forEach(id => {
+      const block = document.getElementById(id);
+      if (!block) return;
+      block.querySelectorAll('.quiz-option').forEach(o => {
+        o.classList.remove('selected','correct','incorrect');
+        o.disabled = false;
+      });
+      const feedback = block.querySelector('.quiz-feedback');
+      feedback.className = 'quiz-feedback';
+      feedback.textContent = '';
+    });
+  };
+
+})();
+</script>
+</body>
+</html>
