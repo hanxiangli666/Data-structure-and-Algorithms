@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>深入理解 JWT：无状态认证的艺术</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400;1,9..40,500&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  
+  <style>
+    /* === 核心设计系统 === */
+    :root {
+      --color-bg:             #FAF7F2;
+      --color-bg-warm:        #F5F0E8;
+      --color-bg-code:        #1E1E2E;
+      --color-text:           #2C2A28;
+      --color-text-secondary: #6B6560;
+      --color-border:         #E5DFD6;
+      --color-surface:        #FFFFFF;
+      --color-surface-warm:   #FDF9F3;
+      
+      /* JWT 专属主题色：深沉的紫色，代表加密与安全 */
+      --color-accent:         #7B6DAA; 
+      --color-accent-hover:   #5A4D8A;
+      --color-accent-light:   #F0Edf5;
+      --color-accent-muted:   #B1A7D1;
+      
+      --color-success:        #2D8B55;
+      --color-success-light:  #E8F5EE;
+      --color-error:          #C93B3B;
+      --color-error-light:    #FDE8E8;
+
+      --color-actor-1:        #7B6DAA; /* 服务器/海关 */
+      --color-actor-2:        #D94F30; /* 伪造者/黑客 */
+
+      --font-display:  'Bricolage Grotesque', sans-serif;
+      --font-body:     'DM Sans', -apple-system, sans-serif;
+      --font-mono:     'JetBrains Mono', monospace;
+
+      --text-xs: 0.75rem; --text-sm: 0.875rem; --text-base: 1rem;
+      --text-lg: 1.125rem; --text-xl: 1.25rem; --text-2xl: 1.5rem;
+      --text-4xl: 2.25rem; --text-6xl: 3.75rem;
+
+      --space-2: 0.5rem; --space-3: 0.75rem; --space-4: 1rem; 
+      --space-6: 1.5rem; --space-8: 2rem; --space-12: 3rem; --space-16: 4rem;
+
+      --content-width: 800px;
+      --radius-sm: 8px; --radius-md: 12px;
+      --shadow-sm: 0 1px 2px rgba(44, 42, 40, 0.05);
+      --shadow-md: 0 4px 12px rgba(44, 42, 40, 0.08);
+      --shadow-lg: 0 8px 24px rgba(44, 42, 40, 0.1);
+      
+      --duration-fast: 150ms; --duration-normal: 300ms; --duration-slow: 500ms;
+    }
+
+    body {
+      margin: 0; font-family: var(--font-body); color: var(--color-text);
+      background: var(--color-bg); line-height: 1.6;
+      background-image: radial-gradient(ellipse at 20% 50%, rgba(123, 109, 170, 0.04) 0%, transparent 50%);
+    }
+
+    h1, h2, h3 { font-family: var(--font-display); line-height: 1.15; }
+    p { font-size: var(--text-lg); }
+
+    /* === 模块布局 === */
+    .module { min-height: 100vh; padding: var(--space-16) var(--space-6); border-bottom: 1px solid var(--color-border); }
+    .module:nth-child(even) { background: var(--color-bg-warm); }
+    .module-content { max-width: var(--content-width); margin: 0 auto; }
+    
+    .module-number { font-size: var(--text-6xl); font-weight: 800; color: var(--color-accent); opacity: 0.15; display: block; margin-bottom: -20px; }
+    .module-title { font-size: var(--text-4xl); font-weight: 700; margin: 0 0 var(--space-2) 0; }
+    .module-subtitle { font-size: var(--text-xl); color: var(--color-text-secondary); margin-bottom: var(--space-12); }
+
+    /* === 交互词汇表 (Glossary Tooltips) === */
+    .term { border-bottom: 1.5px dashed var(--color-accent-muted); cursor: pointer; position: relative; font-weight: 600; color: var(--color-accent); }
+    .term:hover, .term.active { border-bottom-color: var(--color-accent); color: var(--color-accent-hover); }
+    
+    .term-tooltip {
+      position: fixed; background: var(--color-bg-code); color: #CDD6F4;
+      padding: var(--space-3) var(--space-4); border-radius: var(--radius-sm);
+      font-size: var(--text-sm); font-family: var(--font-body); width: max(200px, min(320px, 80vw)); 
+      box-shadow: var(--shadow-lg); pointer-events: none; opacity: 0; transition: opacity var(--duration-fast); z-index: 10000;
+    }
+    .term-tooltip::after {
+      content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+      border: 6px solid transparent; border-top-color: var(--color-bg-code);
+    }
+    .term-tooltip.visible { opacity: 1; }
+
+    /* === 代码翻译块 === */
+    .translation-block { display: grid; grid-template-columns: 1fr 1fr; border-radius: var(--radius-md); overflow: hidden; box-shadow: var(--shadow-md); margin: var(--space-8) 0; }
+    .translation-code { background: var(--color-bg-code); color: #CDD6F4; padding: var(--space-6); font-family: var(--font-mono); font-size: var(--text-sm); position: relative; }
+    .translation-code pre { white-space: pre-wrap; word-break: break-word; margin: 0; padding-top: var(--space-6);}
+    .translation-english { background: var(--color-surface-warm); padding: var(--space-6); font-size: var(--text-sm); border-left: 3px solid var(--color-accent); position: relative; }
+    .translation-label { position: absolute; top: var(--space-2); right: var(--space-3); font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.1em; opacity: 0.5; }
+    .tl { margin-top: 22px; margin-bottom: 0; color: var(--color-text); }
+    .c-key { color: #CBA6F7; } .c-str { color: #A6E3A1; } .c-num { color: #FAB387; }
+
+    /* === 架构流动画 === */
+    .arch-demo { background: var(--color-surface); padding: var(--space-6); border-radius: var(--radius-md); box-shadow: var(--shadow-md); margin: var(--space-8) 0; }
+    .arch-tabs { display: flex; gap: 10px; margin-bottom: 20px; }
+    .arch-tab { padding: 8px 16px; border: 2px solid var(--color-border); background: transparent; border-radius: var(--radius-sm); cursor: pointer; font-family: var(--font-body); font-weight: bold; }
+    .arch-tab.active { border-color: var(--color-accent); background: var(--color-accent-light); color: var(--color-accent); }
+    .arch-view { display: none; text-align: center; padding: 20px 0; }
+    .arch-view.active { display: block; animation: fadeIn 0.3s; }
+    @keyframes fadeIn { from{opacity:0;} to{opacity:1;} }
+
+    /* === 群聊动画 === */
+    .chat-window { background: var(--color-bg-warm); border-radius: var(--radius-md); padding: var(--space-4); margin: var(--space-8) 0; border: 1px solid var(--color-border); }
+    .chat-message { display: flex; gap: var(--space-3); margin-bottom: var(--space-4); opacity: 0; transform: translateY(10px); }
+    .chat-avatar { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; flex-shrink: 0; }
+    .chat-bubble { background: var(--color-surface); padding: var(--space-3) var(--space-4); border-radius: 0 var(--radius-md) var(--radius-md) var(--radius-md); box-shadow: var(--shadow-sm); max-width: 80%; }
+    .chat-sender { font-size: var(--text-xs); font-weight: bold; margin-bottom: 2px; display: block; }
+    
+    /* === 测验 === */
+    .quiz-container { background: var(--color-surface); padding: var(--space-6); border-radius: var(--radius-md); box-shadow: var(--shadow-md); margin: var(--space-8) 0; }
+    .quiz-option { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-4); border: 2px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-surface); cursor: pointer; text-align: left; font-size: var(--text-base); transition: all 0.2s; margin-bottom: 10px; width: 100%; box-sizing: border-box;}
+    .quiz-option:hover { border-color: var(--color-accent-muted); }
+    .quiz-option.selected { border-color: var(--color-accent); background: var(--color-accent-light); }
+    .quiz-option.correct { border-color: var(--color-success); background: var(--color-success-light); }
+    .quiz-option.incorrect { border-color: var(--color-error); background: var(--color-error-light); }
+    .quiz-feedback { max-height: 0; overflow: hidden; opacity: 0; transition: all 0.3s; }
+    .quiz-feedback.show { max-height: 300px; opacity: 1; padding: var(--space-4); margin-top: var(--space-3); border-radius: var(--radius-sm); }
+    .quiz-feedback.success { background: var(--color-success-light); color: var(--color-success); border-left: 4px solid var(--color-success); }
+    .quiz-feedback.error { background: var(--color-error-light); color: var(--color-error); border-left: 4px solid var(--color-error); }
+
+    .btn { background: var(--color-accent); color: white; border: none; padding: var(--space-2) var(--space-4); border-radius: var(--radius-sm); cursor: pointer; font-size: var(--text-base); }
+    .btn:hover { background: var(--color-accent-hover); }
+    
+    .animate-in { opacity: 0; transform: translateY(20px); transition: all var(--duration-slow) ease-out; }
+    .animate-in.visible { opacity: 1; transform: translateY(0); }
+  </style>
+</head>
+<body>
+
+  <section class="module">
+    <div class="module-content">
+      <header class="module-header animate-in">
+        <span class="module-number">01</span>
+        <h1 class="module-title">中心档案馆的崩塌</h1>
+        <p class="module-subtitle">为什么现代复杂的互联网架构，不再喜欢传统的 Session？</p>
+      </header>
+
+      <div class="module-body animate-in">
+        <p>假设你到达了一个跨国机场。传统的 Session 机制，就像是海关**不发放任何实体签证**。你在北京总部的柜台登记身份后，柜台大妈在电脑里录入一条记录：<code>人员ID:8899 -> 张三，允许登机</code>。然后发给你一个写着 8899 的塑料牌（Session ID）。</p>
+        
+        <p>当你飞到巴黎，巴黎的海关看到你的 8899 牌子，他不知道你是谁。他必须**打跨国长途电话**给北京总部的档案库查询：“喂？8899 是谁？有权限入境吗？”</p>
+
+        <div class="arch-demo">
+          <div class="arch-tabs">
+            <button class="arch-tab active" onclick="switchTab('session')">旧模式：Session (查库)</button>
+            <button class="arch-tab" onclick="switchTab('jwt')">新模式：JWT (自包含)</button>
+          </div>
+          
+          <div id="view-session" class="arch-view active">
+            <p><strong>你 ✈️ 巴黎海关 ☎️ 北京 Redis 档案中心</strong></p>
+            <p style="color: var(--color-text-secondary); font-size: 0.9em;">痛点：所有海关都极度依赖那个中心的档案库。<br>一旦档案库宕机，或者海关数量增加（<span class="term" data-definition="把一个大型应用拆分成多个小型、独立运行的服务。比如订单服务、用户服务、支付服务分开部署。">微服务</span>架构），长途电话的线路就会被彻底挤爆。</p>
+          </div>
+          
+          <div id="view-jwt" class="arch-view">
+            <p><strong>你 ✈️ 巴黎海关 ✅ 直接放行（无需打电话）</strong></p>
+            <p style="color: var(--color-text-secondary); font-size: 0.9em;">解法：海关不再依赖中心档案库，因为你出示的是一本**由官方防伪签发的电子护照 (JWT)**。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="module">
+    <div class="module-content">
+      <header class="module-header animate-in">
+        <span class="module-number">02</span>
+        <h1 class="module-title">电子护照：签名，而不是加密</h1>
+        <p class="module-subtitle">JWT 最大的误区：它从来没有把你的信息“藏起来”。</p>
+      </header>
+
+      <div class="module-body animate-in">
+        <p><span class="term" data-definition="JSON Web Token。一种轻量级的、无状态的、自包含的安全认证令牌，通常用于 API 鉴权。">JWT</span> 就像一本你随身携带的**电子护照**。护照上明明白白地印着你的名字、到期时间、可以去的国家。</p>
+        
+        <p>任何人捡到你的护照，都可以翻开看（因为它是 <span class="term" data-definition="一种常见的编码方式，把二进制数据变成可打印的字符串。注意：它是编码，不是加密！任何人都可轻易反向解码。">Base64 编码</span> 的）。<strong>但是，任何人都不敢篡改它。</strong></p>
+        <p>如果你尝试用笔把护照上的“经济舱”划掉，改成“头等舱”，海关立刻就会发现。因为护照的最后一页，印着一个由政府防伪私钥盖下的**全息数字签名**。</p>
+
+        <div class="chat-window">
+          <div id="chat-messages">
+            <div class="chat-message" id="msg-1" style="display:none;">
+              <div class="chat-avatar" style="background: var(--color-actor-2)">🦹</div>
+              <div class="chat-bubble">
+                <span class="chat-sender" style="color: var(--color-actor-2)">伪造者 (黑客)</span>
+                <p>嘿嘿，我抓到了我的 JWT 令牌！我把它解码了，发现里面写着 <code>{"role": "user"}</code>。我直接改成 <code>{"role": "admin"}</code>，然后再重新 Base64 编码发给服务器！</p>
+              </div>
+            </div>
+            <div class="chat-message" id="msg-2" style="display:none;">
+              <div class="chat-avatar" style="background: var(--color-actor-1)">👮</div>
+              <div class="chat-bubble">
+                <span class="chat-sender" style="color: var(--color-actor-1)">服务器 网关</span>
+                <p>不好意思，拒绝访问。我把你篡改后的内容，用我藏在机房里的**机密私钥**重新计算了一遍签名。发现算出来的签名，和你令牌尾巴上带的签名根本对不上！</p>
+              </div>
+            </div>
+            <div class="chat-message" id="msg-3" style="display:none;">
+              <div class="chat-avatar" style="background: var(--color-actor-1)">👮</div>
+              <div class="chat-bubble">
+                <span class="chat-sender" style="color: var(--color-actor-1)">服务器 网关</span>
+                <p>JWT 的安全性来源于**签名不可伪造**，而不是内容加密。记住，千万别把银行卡号放进 JWT 里！</p>
+              </div>
+            </div>
+          </div>
+          <button class="btn" style="margin-top:10px;" onclick="playChatNext()" id="chat-btn">▶ 播放防伪造推演</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="module">
+    <div class="module-content">
+      <header class="module-header animate-in">
+        <span class="module-number">03</span>
+        <h1 class="module-title">拆解 JWT 的三段解构</h1>
+        <p class="module-subtitle">所有的 JWT 看起来都是三段用点（.）隔开的乱码串。</p>
+      </header>
+
+      <div class="module-body animate-in">
+        <p>一个标准的 JWT 长这样：<code>Header.Payload.Signature</code> （头部 . 载荷 . 签名）。</p>
+        <p>让我们用代码直观地看看，这三段“乱码”解码后到底装了什么：</p>
+
+        <div class="translation-block">
+          <div class="translation-code">
+            <span class="translation-label">解码后的 JSON</span>
+            <pre><code><span class="c-key">1. Header (封面)</span>
+{
+  <span class="c-str">"alg"</span>: <span class="c-str">"RS256"</span>,
+  <span class="c-str">"typ"</span>: <span class="c-str">"JWT"</span>
+}
+
+<span class="c-key">2. Payload (个人信息页)</span>
+{
+  <span class="c-str">"sub"</span>: <span class="c-str">"user-123"</span>,
+  <span class="c-str">"role"</span>: <span class="c-str">"reader"</span>,
+  <span class="c-str">"exp"</span>: <span class="c-num">1758975478</span>
+}
+
+<span class="c-key">3. Signature (防伪印章)</span>
+RS256_Sign(
+  Base64(Header) + "." + Base64(Payload),
+  Server_Private_Key
+)</code></pre>
+          </div>
+          <div class="translation-english">
+            <span class="translation-label">大白话翻译</span>
+            <div class="translation-lines">
+              <p class="tl" style="margin-top: 10px;">告诉海关：本护照使用 JWT 格式，底部的防伪印章是用 RS256（非对称加密）算法盖的。</p>
+              <br><br><br>
+              <p class="tl" style="margin-top: 5px;">放具体的业务数据和 <span class="term" data-definition="JWT 中的标准声明字段，比如 exp代表过期时间，sub代表用户标识，iss代表签发机构。">Claims(声明)</span>：<br>你是谁（user-123）<br>你的角色（reader）<br>护照过期时间戳（exp）。</p>
+              <br>
+              <p class="tl" style="margin-top: -5px;">服务器把上面两部分拼起来，用自己的私钥“咔嚓”盖上一个谁也无法伪造的数学印章。海关只需用公开的公钥验一下印章真假即可放行。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="module">
+    <div class="module-content">
+      <header class="module-header animate-in">
+        <span class="module-number">04</span>
+        <h1 class="module-title">架构师的决策时刻</h1>
+        <p class="module-subtitle">你已经懂了原理，现在来决定系统的命运。</p>
+      </header>
+
+      <div class="module-body animate-in">
+        
+        <div class="quiz-container" id="quiz-1">
+          <h3>情景测验：你的系统遭到了用户投诉，说每次登录后 15 分钟就被强制踢下线，体验极差。作为架构师，你知道 JWT 一旦签发，不到期就无法注销，所以你不敢把过期时间设得太长（怕令牌泄露）。你应该怎么做？</h3>
+          <div class="quiz-options">
+            <button class="quiz-option" data-value="a" onclick="selectOption(this)">
+              A. 妥协，直接把当前 JWT 的过期时间改成 30 天，用户开心就好。
+            </button>
+            <button class="quiz-option" data-value="b" onclick="selectOption(this)">
+              B. 引入双令牌机制：15分钟的 Access Token + 30天的 Refresh Token。
+            </button>
+            <button class="quiz-option" data-value="c" onclick="selectOption(this)">
+              C. 把用户的密码也塞进 JWT 里，让客户端自己去验证是否过期。
+            </button>
+          </div>
+          <div class="quiz-feedback" id="quiz-1-feedback"></div>
+          <button class="btn" style="margin-top:15px;" onclick="checkQuiz()">提交方案</button>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <script>
+    (function() {
+      // 1. 滚动动画
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('visible');
+            observer.unobserve(entry.target);
+          }
+        });
+      }, { rootMargin: '0px 0px -10% 0px', threshold: 0.1 });
+      document.querySelectorAll('.animate-in').forEach(el => observer.observe(el));
+
+      // 2. Tooltip 逻辑
+      let activeTooltip = null;
+      function positionTooltip(term, tip) {
+        const rect = term.getBoundingClientRect();
+        const tipWidth = Math.min(320, window.innerWidth * 0.8); 
+        let left = rect.left + rect.width / 2 - tipWidth / 2;
+        left = Math.max(8, Math.min(left, window.innerWidth - tipWidth - 8));
+        
+        tip.style.left = left + 'px';
+        document.body.appendChild(tip);
+        
+        const tipHeight = tip.offsetHeight;
+        if (rect.top - tipHeight - 8 < 0) {
+          tip.style.top = (rect.bottom + 8) + 'px';
+          tip.classList.add('flip');
+        } else {
+          tip.style.top = (rect.top - tipHeight - 8) + 'px';
+          tip.classList.remove('flip');
+        }
+      }
+
+      document.querySelectorAll('.term').forEach(term => {
+        const tip = document.createElement('span');
+        tip.className = 'term-tooltip';
+        tip.textContent = term.dataset.definition;
+
+        const showTip = (e) => {
+          e.stopPropagation();
+          if (activeTooltip && activeTooltip !== tip) {
+            activeTooltip.classList.remove('visible');
+            activeTooltip.remove();
+          }
+          if (!tip.classList.contains('visible')) {
+            positionTooltip(term, tip);
+            requestAnimationFrame(() => tip.classList.add('visible'));
+            activeTooltip = tip;
+            term.classList.add('active');
+          }
+        };
+
+        const hideTip = () => {
+          tip.classList.remove('visible');
+          term.classList.remove('active');
+          setTimeout(() => { if (!tip.classList.contains('visible')) tip.remove(); }, 150);
+          if (activeTooltip === tip) activeTooltip = null;
+        };
+
+        term.addEventListener('mouseenter', showTip);
+        term.addEventListener('mouseleave', hideTip);
+        term.addEventListener('click', (e) => {
+            if(activeTooltip === tip) { hideTip(); } else { showTip(e); }
+        });
+      });
+
+      document.addEventListener('click', () => {
+        if (activeTooltip) {
+          activeTooltip.classList.remove('visible');
+          document.querySelectorAll('.term.active').forEach(t => t.classList.remove('active'));
+          activeTooltip.remove();
+          activeTooltip = null;
+        }
+      });
+
+      // 3. 架构对比 Tab 切换
+      window.switchTab = function(type) {
+        document.querySelectorAll('.arch-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.arch-view').forEach(v => v.classList.remove('active'));
+        
+        if(type === 'session') {
+          document.querySelectorAll('.arch-tab')[0].classList.add('active');
+          document.getElementById('view-session').classList.add('active');
+        } else {
+          document.querySelectorAll('.arch-tab')[1].classList.add('active');
+          document.getElementById('view-jwt').classList.add('active');
+        }
+      };
+
+      // 4. 群聊动画
+      let currentChatStep = 1;
+      window.playChatNext = function() {
+        if (currentChatStep > 3) {
+          for(let i=1; i<=3; i++) {
+            const msg = document.getElementById(`msg-${i}`);
+            msg.style.display = 'none';
+            msg.style.opacity = '0';
+            msg.style.transform = 'translateY(10px)';
+          }
+          currentChatStep = 1;
+          document.getElementById('chat-btn').innerText = "▶ 播放防伪造推演";
+          return;
+        }
+        
+        const msg = document.getElementById(`msg-${currentChatStep}`);
+        msg.style.display = 'flex';
+        void msg.offsetWidth; // Trigger reflow
+        msg.style.transition = 'all 0.4s ease-out';
+        msg.style.opacity = '1';
+        msg.style.transform = 'translateY(0)';
+        
+        currentChatStep++;
+        document.getElementById('chat-btn').innerText = currentChatStep > 3 ? "↺ 重新播放" : `▶ 继续播放 (${currentChatStep-1}/3)`;
+      };
+
+      // 5. 测验逻辑
+      window.selectOption = function(btn) {
+        const container = btn.closest('.quiz-options');
+        container.querySelectorAll('.quiz-option').forEach(opt => opt.classList.remove('selected'));
+        btn.classList.add('selected');
+      };
+
+      window.checkQuiz = function() {
+        const selected = document.querySelector('#quiz-1 .quiz-option.selected');
+        const feedback = document.getElementById('quiz-1-feedback');
+        
+        if (!selected) {
+          feedback.innerHTML = '请先选择一个方案！';
+          feedback.className = 'quiz-feedback show error';
+          return;
+        }
+
+        const val = selected.getAttribute('data-value');
+        if (val === 'b') {
+          selected.classList.add('correct');
+          feedback.innerHTML = '<strong>正解！</strong><br>这也是业界标准做法。<span class="term" data-definition="短期访问令牌。随每个请求发送，哪怕泄露了，十几分钟后也就失效了。">Access Token</span>（短命）用来保障安全，泄露窗口小；<span class="term" data-definition="长期刷新凭证。用来向服务器申请新的 Access Token。通常存在服务器或设置了严密安全属性的底层。">Refresh Token</span>（长命）用来保障体验，用户无感刷新。这样既安全又舒服。';
+          feedback.className = 'quiz-feedback show success';
+        } else if (val === 'a') {
+          selected.classList.add('incorrect');
+          feedback.innerHTML = '<strong>风险太高！</strong><br>JWT 一旦签发，除非维护一个庞大的黑名单数据库，否则很难主动让它失效。如果用户的 30 天超长令牌被盗，黑客可以在这整整一个月内肆意冒充该用户。';
+          feedback.className = 'quiz-feedback show error';
+        } else if (val === 'c') {
+          selected.classList.add('incorrect');
+          feedback.innerHTML = '<strong>绝对禁止！</strong><br>记不记得上一章讲的？JWT 默认只是 Base64 编码，<strong>不是加密</strong>！把密码放进去，相当于把密码明文贴在脑门上在互联网上裸奔。';
+          feedback.className = 'quiz-feedback show error';
+        }
+        
+        document.querySelectorAll('#quiz-1 .quiz-option').forEach(btn => btn.style.pointerEvents = 'none');
+      };
+    })();
+  </script>
+</body>
+</html>

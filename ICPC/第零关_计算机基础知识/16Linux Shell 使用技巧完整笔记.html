@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Linux Shell 技巧：好莱坞片场生存指南</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400;1,9..40,500&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  
+  <style>
+    /* === 核心设计系统 === */
+    :root {
+      /* 电影剧本的暖色底与胶片灰 */
+      --color-bg:             #FDFBF7; 
+      --color-bg-warm:        #F4F0EA;
+      --color-bg-code:        #1C1917; /* 场记板黑 */
+      --color-text:           #292524;
+      --color-text-secondary: #57534E;
+      --color-text-muted:     #A8A29E;
+      --color-border:         #E7E5E4;
+      --color-surface:        #FFFFFF;
+      --color-surface-warm:   #FAF8F5;
+      
+      /* 导演椅的经典正红 (Director's Red) */
+      --color-accent:         #E11D48; 
+      --color-accent-hover:   #BE123C;
+      --color-accent-light:   #FFE4E6;
+      --color-accent-muted:   #FDA4AF;
+      
+      --color-success:        #059669;
+      --color-success-light:  #D1FAE5;
+      --color-error:          #E11D48;
+      --color-error-light:    #FFE4E6;
+
+      /* 角色颜色 */
+      --color-actor-1:        #E11D48; /* 总导演 (Shell) */
+      --color-actor-2:        #0284C7; /* A组摄影 (前台进程) */
+      --color-actor-3:        #D97706; /* B组特技 (后台进程/管道) */
+
+      --font-display:  'Bricolage Grotesque', sans-serif;
+      --font-body:     'DM Sans', -apple-system, sans-serif;
+      --font-mono:     'JetBrains Mono', monospace;
+
+      --text-xs: 0.75rem; --text-sm: 0.875rem; --text-base: 1rem;
+      --text-lg: 1.125rem; --text-xl: 1.25rem; --text-2xl: 1.5rem;
+      --text-4xl: 2.25rem; --text-6xl: 3.75rem;
+
+      --space-2: 0.5rem; --space-3: 0.75rem; --space-4: 1rem; 
+      --space-6: 1.5rem; --space-8: 2rem; --space-12: 3rem; --space-16: 4rem;
+
+      --content-width: 800px;
+      --radius-sm: 8px; --radius-md: 12px;
+      --shadow-sm: 0 1px 2px rgba(28, 25, 23, 0.05);
+      --shadow-md: 0 4px 12px rgba(28, 25, 23, 0.08);
+      --shadow-lg: 0 8px 24px rgba(28, 25, 23, 0.1);
+      
+      --duration-fast: 150ms; --duration-normal: 300ms; --duration-slow: 500ms;
+    }
+
+    body { margin: 0; font-family: var(--font-body); color: var(--color-text); background: var(--color-bg); line-height: 1.6; background-image: radial-gradient(ellipse at 20% 50%, rgba(225, 29, 72, 0.03) 0%, transparent 50%); }
+    h1, h2, h3 { font-family: var(--font-display); line-height: 1.15; }
+    p { font-size: var(--text-lg); }
+    cite { font-size: 0.75em; color: var(--color-text-muted); font-style: normal; user-select: none; }
+
+    /* === 模块布局 === */
+    .module { min-height: 100vh; padding: var(--space-16) var(--space-6); border-bottom: 1px solid var(--color-border); }
+    .module:nth-child(even) { background: var(--color-bg-warm); }
+    .module-content { max-width: var(--content-width); margin: 0 auto; }
+    .module-number { font-size: var(--text-6xl); font-weight: 800; color: var(--color-accent); opacity: 0.15; display: block; margin-bottom: -20px; }
+    .module-title { font-size: var(--text-4xl); font-weight: 700; margin: 0 0 var(--space-2) 0; }
+    .module-subtitle { font-size: var(--text-xl); color: var(--color-text-secondary); margin-bottom: var(--space-12); }
+
+    /* === 交互词汇表 === */
+    .term { border-bottom: 2px dashed var(--color-accent-muted); cursor: pointer; position: relative; font-weight: 600; color: var(--color-accent); transition: all 0.2s; }
+    .term:hover, .term.active { border-bottom-color: var(--color-accent); color: var(--color-accent-hover); }
+    .term-tooltip { position: fixed; background: var(--color-bg-code); color: #F5F5F4; padding: var(--space-3) var(--space-4); border-radius: var(--radius-sm); font-size: var(--text-sm); font-family: var(--font-body); width: max(200px, min(320px, 80vw)); box-shadow: var(--shadow-lg); pointer-events: none; opacity: 0; transition: opacity var(--duration-fast); z-index: 10000; }
+    .term-tooltip::after { content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%); border: 6px solid transparent; border-top-color: var(--color-bg-code); }
+    .term-tooltip.visible { opacity: 1; }
+    .term-tooltip.flip { bottom: auto; top: calc(100% + 8px); }
+    .term-tooltip.flip::after { top: auto; bottom: 100%; border-top-color: transparent; border-bottom-color: var(--color-bg-code); }
+
+    /* === 卡片与 Callout === */
+    .callout { display: flex; gap: var(--space-4); padding: var(--space-4); background: var(--color-accent-light); border-left: 4px solid var(--color-accent); border-radius: 0 var(--radius-md) var(--radius-md) 0; margin: var(--space-6) 0; }
+    .callout-title { display: block; font-family: var(--font-display); font-size: var(--text-xl); margin-bottom: var(--space-2); color: var(--color-accent-hover);}
+    
+    .arch-cards { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-6); margin: var(--space-8) 0; }
+    .arch-card { background: var(--color-surface); padding: var(--space-6); border-radius: var(--radius-md); box-shadow: var(--shadow-sm); border-top: 4px solid var(--color-text-muted); }
+    .arch-card.highlight { border-top-color: var(--color-accent); box-shadow: var(--shadow-md); }
+
+    /* === 代码翻译块 === */
+    .translation-block { display: grid; grid-template-columns: 1fr 1fr; border-radius: var(--radius-md); overflow: hidden; box-shadow: var(--shadow-md); margin: var(--space-8) 0; }
+    .translation-code { background: var(--color-bg-code); color: #E7E5E4; padding: var(--space-6); font-family: var(--font-mono); font-size: var(--text-sm); position: relative; overflow-x: hidden;}
+    .translation-code pre { white-space: pre-wrap; word-break: break-word; margin: 0; padding-top: var(--space-6);}
+    .translation-english { background: var(--color-surface-warm); padding: var(--space-6); font-size: var(--text-sm); border-left: 3px solid var(--color-accent); position: relative; }
+    .translation-label { position: absolute; top: var(--space-2); right: var(--space-3); font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.1em; opacity: 0.5; }
+    .tl { margin-top: 22px; margin-bottom: 0; color: var(--color-text); }
+    .c-key { color: #CBA6F7; } .c-str { color: #A6E3A1; } .c-num { color: #FAB387; } .c-cmd { color: #89B4FA; } .c-arg { color: #94E2D5; } .c-cmnt { color: #A8A29E; }
+
+    /* === 群聊动画 === */
+    .chat-window { background: var(--color-bg-warm); border-radius: var(--radius-md); padding: var(--space-4); margin: var(--space-8) 0; border: 1px solid var(--color-border); }
+    .chat-message { display: flex; gap: var(--space-3); margin-bottom: var(--space-4); opacity: 0; transform: translateY(10px); }
+    .chat-avatar { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; flex-shrink: 0; font-size: 1.2rem; }
+    .chat-bubble { background: var(--color-surface); padding: var(--space-3) var(--space-4); border-radius: 0 var(--radius-md) var(--radius-md) var(--radius-md); box-shadow: var(--shadow-sm); max-width: 80%; }
+    .chat-sender { font-size: var(--text-xs); font-weight: bold; margin-bottom: 2px; display: block; }
+    
+    /* === 数据流动画 === */
+    .flow-animation { background: var(--color-surface); padding: var(--space-6); border-radius: var(--radius-md); box-shadow: var(--shadow-md); margin: var(--space-8) 0; text-align: center; }
+    .flow-actors { display: flex; justify-content: space-between; margin-bottom: var(--space-8); position: relative; padding: 0 20px;}
+    .flow-actor { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); z-index: 2; width: 22%; }
+    .flow-actor-icon { width: 60px; height: 60px; border-radius: 50%; background: var(--color-bg-warm); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; border: 2px solid var(--color-border); transition: all 0.3s ease; }
+    .flow-actor.active .flow-actor-icon { border-color: var(--color-accent); box-shadow: 0 0 0 4px var(--color-accent-light); transform: scale(1.1); }
+    .flow-packet { position: absolute; width: 60px; height: 26px; background: var(--color-accent); color: white; border-radius: var(--radius-sm); top: 18px; left: 15%; opacity: 0; transition: all 0.6s ease; z-index: 1; font-size: 11px; display: flex; align-items: center; justify-content: center; font-weight: bold;}
+    .flow-label { font-size: var(--text-lg); font-weight: 600; min-height: 4rem; margin-bottom: var(--space-4); }
+
+    /* === 图标卡片列 === */
+    .icon-rows { display: flex; flex-direction: column; gap: var(--space-4); margin: var(--space-8) 0;}
+    .icon-row { display: flex; align-items: center; gap: var(--space-4); padding: var(--space-4); background: var(--color-surface); border-radius: var(--radius-md); box-shadow: var(--shadow-sm); border-left: 4px solid var(--color-accent);}
+    .icon-row p { margin: 0; color: var(--color-text-secondary); font-size: var(--text-sm); }
+    .icon-circle { width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.25rem; flex-shrink: 0; color: white; background: var(--color-accent-light);}
+
+    /* === 测验 === */
+    .quiz-container { background: var(--color-surface); padding: var(--space-6); border-radius: var(--radius-md); box-shadow: var(--shadow-md); margin: var(--space-8) 0; }
+    .quiz-option { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-4); border: 2px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-surface); cursor: pointer; text-align: left; font-size: var(--text-base); transition: all 0.2s; margin-bottom: 10px; width: 100%; box-sizing: border-box;}
+    .quiz-option:hover { border-color: var(--color-accent-muted); }
+    .quiz-option.selected { border-color: var(--color-accent); background: var(--color-accent-light); }
+    .quiz-option.correct { border-color: var(--color-success); background: var(--color-success-light); }
+    .quiz-option.incorrect { border-color: var(--color-error); background: var(--color-error-light); }
+    .quiz-feedback { max-height: 0; overflow: hidden; opacity: 0; transition: all 0.3s; }
+    .quiz-feedback.show { max-height: 300px; opacity: 1; padding: var(--space-4); margin-top: var(--space-3); border-radius: var(--radius-sm); }
+    .quiz-feedback.success { background: var(--color-success-light); color: var(--color-success); border-left: 4px solid var(--color-success); }
+    .quiz-feedback.error { background: var(--color-error-light); color: var(--color-error); border-left: 4px solid var(--color-error); }
+
+    .btn { background: var(--color-accent); color: white; border: none; padding: var(--space-2) var(--space-4); border-radius: var(--radius-sm); cursor: pointer; font-size: var(--text-base); font-weight: bold; transition: all 0.2s; }
+    .btn:hover { background: var(--color-accent-hover); }
+    
+    .animate-in { opacity: 0; transform: translateY(20px); transition: all var(--duration-slow) ease-out; }
+    .animate-in.visible { opacity: 1; transform: translateY(0); }
+  </style>
+</head>
+<body>
+
+  <section class="module">
+    <div class="module-content">
+      <header class="module-header animate-in">
+        <span class="module-number">01</span>
+        <h1 class="module-title">剧本与提词器</h1>
+        <p class="module-subtitle">为什么你的管道符 (|) 经常不生效？</p>
+      </header>
+
+      <div class="module-body animate-in">
+        <p>在 Linux 片场里，作为总导演的你（Shell），需要向各位演员（命令）传达工作指令。但传递指令的方式有两种，如果用错了，演员就会当场罢工罢演：</p>
+
+        <div class="arch-cards">
+          <div class="arch-card">
+            <h3 style="margin-top: 0">剧本 (命令参数 argv)</h3>
+            <p>你用 <code>$()</code> 的形式，在开拍前把印好的**实体剧本**塞到演员手里。演员在开拍（启动）那一刻，清楚地知道自己要处理什么文件。</p>
+            <p style="color: var(--color-text-secondary); font-size: 0.9em;"><strong>代表演员：</strong><code>rm</code> (删除命令)。它是一个老派演员，**只认实体剧本**。如果你不给它剧本，它就站在原地报错。</p>
+          </div>
+          <div class="arch-card highlight">
+            <h3 style="margin-top: 0; color: var(--color-accent);">提词器 (标准输入 stdin)</h3>
+            <p>你用 <strong><span class="term" data-definition="键盘输入，或者管道符 `|` 传来的数据流。程序运行时动态读取，不需要提前在命令后面写死。">管道符 (|)</span></strong> 或重定向 <code>&lt;</code>，把源源不断的数据像**现场提词器**一样滚动播放给正在表演的演员。</p>
+            <p style="color: var(--color-text-secondary); font-size: 0.9em;"><strong>代表演员：</strong><code>cat</code>, <code>grep</code>。它们非常擅长看着提词器即兴发挥，源源不断地处理流进来的数据。</p>
+          </div>
+        </div>
+
+        <div class="translation-block">
+          <div class="translation-code">
+            <span class="translation-label">错误与正确的指挥</span>
+            <pre><code><span class="code-comment"># ❌ 错误：试图用提词器指挥老派演员 rm</span>
+$ <span class="c-cmd">where</span> connect.sh | <span class="c-cmd">rm</span>
+
+<span class="code-comment"># ✅ 正确：把查找结果印成实体剧本，发给 rm</span>
+$ <span class="c-cmd">rm</span> <span class="c-arg">$(</span><span class="c-cmd">where</span> connect.sh<span class="c-arg">)</span></code></pre>
+          </div>
+          <div class="translation-english">
+            <span class="translation-label">大白话翻译</span>
+            <div class="translation-lines">
+              <p class="tl" style="margin-top: 15px;">你把找出来的文件路径显示在提词器上，但 `rm` 根本不看提词器！它直接报错：“你没给我剧本（参数），我要删啥？”</p>
+              <br>
+              <p class="tl" style="margin-top: 35px;">导演先让 `where` 去找文件，找到后印成一份名单（使用 `$()` 提取结果），作为参数亲手递给 `rm`。完美执行！</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <section class="module">
+    <div class="module-content">
+      <header class="module-header animate-in">
+        <span class="module-number">02</span>
+        <h1 class="module-title">B组摄制队与黑话</h1>
+        <p class="module-subtitle">如何让终端不再被长耗时任务卡死？</p>
+      </header>
+
+      <div class="module-body animate-in">
+        <p>在命令行里启动一个需要跑很久的程序（比如打包编译），你的终端界面就会被一直卡住，这叫做**前台阻塞**。为了不耽误你干别的活，你需要成立一支 <strong>B组特技队（后台进程）</strong>。</p>
+
+        <p>在命令末尾加上一个 <strong><span class="term" data-definition="Ampersand。加在命令末尾，告诉 Shell 将该命令放入后台执行，立即交还终端控制权。">符号 `&`</span></strong>，就等于告诉 Shell：“把这个任务丢给 B组在背景里去拍，主摄影机（终端）继续跟着我干活。”</p>
+
+        <div class="chat-window">
+          <div id="chat-messages">
+            <div class="chat-message" id="msg-1" style="display:none;">
+              <div class="chat-avatar" style="background: var(--color-actor-1)">🎬</div>
+              <div class="chat-bubble">
+                <span class="chat-sender" style="color: var(--color-actor-1)">总导演 (你)</span>
+                <p>我们要编译那个巨大的代码库了。<code>npm run build</code>！</p>
+              </div>
+            </div>
+            <div class="chat-message" id="msg-2" style="display:none;">
+              <div class="chat-avatar" style="background: var(--color-actor-2)">🎥</div>
+              <div class="chat-bubble">
+                <span class="chat-sender" style="color: var(--color-actor-2)">A组主摄影机 (当前终端)</span>
+                <p>收到！正在编译... 预计需要 10 分钟。这期间我什么也干不了，你敲键盘我也不会理你。</p>
+              </div>
+            </div>
+            <div class="chat-message" id="msg-3" style="display:none;">
+              <div class="chat-avatar" style="background: var(--color-actor-1)">🎬</div>
+              <div class="chat-bubble">
+                <span class="chat-sender" style="color: var(--color-actor-1)">总导演 (你)</span>
+                <p>哎呀，我还想看一下日志呢！算了，换个命令：<code>npm run build &</code></p>
+              </div>
+            </div>
+            <div class="chat-message" id="msg-4" style="display:none;">
+              <div class="chat-avatar" style="background: var(--color-actor-3)">🚁</div>
+              <div class="chat-bubble">
+                <span class="chat-sender" style="color: var(--color-actor-3)">B组特技队 (后台进程)</span>
+                <p>[1] 8892 启动完毕！我到后台去跑编译了。导演，A组已经空闲了，你可以继续吩咐他们了！</p>
+              </div>
+            </div>
+          </div>
+          <button class="btn" style="margin-top:10px;" onclick="playChatNext()" id="chat-btn">▶ 播放片场调度通讯</button>
+        </div>
+
+        <div class="callout">
+          <div class="callout-icon">💡</div>
+          <div class="callout-content">
+            <strong class="callout-title">片场黑话：alias</strong>
+            <p style="margin-bottom:0">如果你嫌每次打 `git status` 太长，你可以用 <strong><span class="term" data-definition="给一长串复杂的命令起一个简短的名字，方便记忆和快速输入。">alias</span></strong> 命令发明一句片场黑话：<code>alias gs='git status'</code>。以后你只要在终端喊一句 <code>gs</code>，系统就知道你想干嘛了！记得把它写进 <code>~/.bashrc</code> 里，否则明天开工系统就忘了。</p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <section class="module">
+    <div class="module-content">
+      <header class="module-header animate-in">
+        <span class="module-number">03</span>
+        <h1 class="module-title">绿幕、通告单与选角名册</h1>
+        <p class="module-subtitle">解密 Shell 中的环境变量与引号魔法。</p>
+      </header>
+
+      <div class="module-body animate-in">
+        <p>在编写自动化脚本时，标点符号和环境变量决定了你的演员能不能顺利上场：</p>
+
+        <div class="icon-rows">
+          <div class="icon-row">
+            <div class="icon-circle" style="background: var(--color-success)">" "</div>
+            <div>
+              <strong>双引号：绿幕特效 (可变量替换)</strong>
+              <p><code>echo "今天是 $(date)"</code>。双引号允许特效组在后期把 <code>$(date)</code> 这个绿幕**替换成真实的日期**。输出结果：今天是 2026年3月30日。</p>
+            </div>
+          </div>
+          <div class="icon-row">
+            <div class="icon-circle" style="background: var(--color-text-secondary)">' '</div>
+            <div>
+              <strong>单引号：实景拍摄 (所见即所得)</strong>
+              <p><code>echo '今天是 $(date)'</code>。单引号意味着绝对真实，不准做任何特效替换。输出结果：今天是 $(date)。字面长啥样，输出就啥样。</p>
+            </div>
+          </div>
+          <div class="icon-row">
+            <div class="icon-circle" style="background: var(--color-accent)">PATH</div>
+            <div>
+              <strong>$PATH：官方选角名册</strong>
+              <p>当你在终端敲下 <code>npm</code> 时，系统为什么能找到它？因为它在 <strong><span class="term" data-definition="一个极其重要的环境变量。保存着一系列目录路径的列表，用冒号分隔。当你在终端输入一个命令时，系统会挨个去这些目录里找有没有同名的可执行文件。">PATH</span></strong> 名册里。如果你自己写了一个酷炫的脚本想随时调用，必须用 <code>export PATH="$HOME/.local/bin:$PATH"</code> 把你的文件夹塞进这个官方名册里。</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <section class="module">
+    <div class="module-content">
+      <header class="module-header animate-in">
+        <span class="module-number">04</span>
+        <h1 class="module-title">分镜头剧本：Shell Script</h1>
+        <p class="module-subtitle">如何把一系列分散的命令，变成一部能自动播放的电影。</p>
+      </header>
+
+      <div class="module-body animate-in">
+        <p>当你不想每天手动执行那些繁琐的打包、压缩、上传命令时，你需要写一份**分镜头剧本 (Shell Script)**。只要运行它，机器就会自动把流程走完。</p>
+
+        <div class="translation-block">
+          <div class="translation-code">
+            <span class="translation-label">基础脚本骨架</span>
+            <pre><code><span class="c-cmnt">#!/bin/bash</span>
+
+<span class="c-key">for</span> f <span class="c-key">in</span> *.log; <span class="c-key">do</span>
+  <span class="c-key">if</span> [ -s "$f" ]; <span class="c-key">then</span>
+    <span class="c-cmd">echo</span> <span class="c-str">"处理文件: $f"</span>
+  <span class="c-key">else</span>
+    <span class="c-cmd">echo</span> <span class="c-str">"跳过空文件"</span>
+  <span class="c-key">fi</span>
+<span class="c-key">done</span></code></pre>
+          </div>
+          <div class="translation-english">
+            <span class="translation-label">大白话翻译</span>
+            <div class="translation-lines">
+              <p class="tl"><strong><span class="term" data-definition="发音为 `she-bang`。脚本第一行的特殊注释，告诉操作系统应该雇佣哪位导演（解释器，这里是 /bin/bash）来读这份剧本。">Shebang</span></strong>：告诉系统，这份剧本是写给 bash 导演看的。</p>
+              <p class="tl" style="margin-top: 15px;">剧本开始：把当前目录下所有以 `.log` 结尾的文件挨个抓过来。</p>
+              <p class="tl" style="margin-top: 5px;">如果 (if) 这个文件不是空的 (-s)...</p>
+              <p class="tl" style="margin-top: 5px;">就在屏幕上打出一行字：处理文件...</p>
+              <p class="tl" style="margin-top: 5px;">否则 (else)...</p>
+              <p class="tl" style="margin-top: 5px;">就打出一行字：跳过空文件。</p>
+              <p class="tl" style="margin-top: 5px;">循环结束。</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="callout">
+          <div class="callout-icon">💡</div>
+          <div class="callout-content">
+            <strong class="callout-title">最后一步：授予开拍权</strong>
+            <p style="margin-bottom:0">写完脚本 <code>deploy.sh</code> 后，它还只是一张废纸。你必须用 <code>chmod +x deploy.sh</code> 命令，赋予它“可执行权限”。然后才能用 <code>./deploy.sh</code> 让它正式开机运行。</p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <section class="module">
+    <div class="module-content">
+      <header class="module-header animate-in">
+        <span class="module-number">05</span>
+        <h1 class="module-title">后期剪辑室三剑客</h1>
+        <p class="module-subtitle">grep, sed, awk 是如何完美配合的？</p>
+      </header>
+
+      <div class="module-body animate-in">
+        <p>在面对杂乱无章的海量日志时，你需要动用传说中的 Linux 文本处理三剑客。它们组成了最强大的后期剪辑流水线：</p>
+
+        <div class="flow-animation">
+          <h3 style="margin-top:0;">流水线：提取 -> 替换 -> 重新排版</h3>
+          <div class="flow-label" id="flow-label">点击“下一步”启动剪辑流水线</div>
+          
+          <div class="flow-actors">
+            <div class="flow-actor" id="flow-grep">
+              <div class="flow-actor-icon" style="font-size: 1.5rem; border-color: var(--color-actor-2)">✂️</div>
+              <span style="font-size: 0.85em; font-weight:bold; color: var(--color-actor-2)">grep (初剪)</span>
+            </div>
+            <div class="flow-packet" id="flow-packet"></div>
+            <div class="flow-actor" id="flow-sed">
+              <div class="flow-actor-icon" style="font-size: 1.5rem; border-color: var(--color-actor-3)">🎨</div>
+              <span style="font-size: 0.85em; font-weight:bold; color: var(--color-actor-3)">sed (特效)</span>
+            </div>
+            <div class="flow-actor" id="flow-awk">
+              <div class="flow-actor-icon" style="font-size: 1.5rem; border-color: var(--color-actor-1)">📐</div>
+              <span style="font-size: 0.85em; font-weight:bold; color: var(--color-actor-1)">awk (排版)</span>
+            </div>
+          </div>
+
+          <button class="btn" onclick="flowNext()" id="flow-btn">下一步 (1/4)</button>
+        </div>
+
+        <ul style="font-size: var(--text-lg); margin-top: var(--space-6)">
+          <li><strong><span class="term" data-definition="Global Regular Expression Print。最强大的文本过滤器。专门用来在一大堆文本中，抓出包含特定关键字的那几行。">grep</span></strong>：负责“找”。从十万行日志里，瞬间揪出包含 <code>ERROR</code> 报错的那 5 行。</li>
+          <li><strong><span class="term" data-definition="Stream Editor。流编辑器。最擅长的是用正则表达式做批量替换，比如把文件里所有的 http 替换成 https。">sed</span></strong>：负责“改”。拿到 grep 找出来的错别字，用正则表达式把它们批量替换成正确的格式。</li>
+          <li><strong><span class="term" data-definition="不仅是命令，更是一门完整的文本处理语言。最擅长把凌乱的文本按空格或逗号分列，并进行列的提取和数学计算。">awk</span></strong>：负责“排版算数”。它最擅长把长文本切分成一列一列的。比如要求：“把第 3 列的所有数字加起来求和”，这就是它的绝活。</li>
+        </ul>
+
+      </div>
+    </div>
+  </section>
+
+  <section class="module">
+    <div class="module-content">
+      <header class="module-header animate-in">
+        <span class="module-number">06</span>
+        <h1 class="module-title">总导演的突发测验</h1>
+        <p class="module-subtitle">面对真实的终端危机，你会如何下达指令？</p>
+      </header>
+
+      <div class="module-body animate-in">
+        
+        <div class="quiz-container" id="quiz-1">
+          <h3>实战危机：你在自己的普通用户账号下，写好了一个配置脚本 `setup.sh`。为了让配置生效到系统底层，你敲下了 `sudo ./setup.sh`。但是终端无情地报错：“sudo: ./setup.sh: command not found”。为什么你明明能看到文件，sudo 却说找不到？</h3>
+          <div class="quiz-options">
+            <button class="quiz-option" data-value="a" onclick="selectOption(this)">
+              A. 因为 sudo 剥夺了你的所有权限，导致你无权查看当前目录下的文件。
+            </button>
+            <button class="quiz-option" data-value="b" onclick="selectOption(this)">
+              B. 因为你在调用 sudo（变身为超级管理员）时，系统切换到了 root 专属的安全 PATH 名册，而你的当前目录并不在它的搜索名册里。
+            </button>
+            <button class="quiz-option" data-value="c" onclick="selectOption(this)">
+              C. 因为脚本第一行的 Shebang (#!/bin/bash) 写错了，导致操作系统拒绝执行。
+            </button>
+          </div>
+          <div class="quiz-feedback" id="quiz-1-feedback"></div>
+          <button class="btn" style="margin-top:15px;" onclick="checkQuiz()">提交判断</button>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <script>
+    (function() {
+      // 1. 滚动动画
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('visible');
+            observer.unobserve(entry.target);
+          }
+        });
+      }, { rootMargin: '0px 0px -10% 0px', threshold: 0.1 });
+      document.querySelectorAll('.animate-in').forEach(el => observer.observe(el));
+
+      // 2. Tooltip 悬浮字典
+      let activeTooltip = null;
+      function positionTooltip(term, tip) {
+        const rect = term.getBoundingClientRect();
+        const tipWidth = Math.min(320, window.innerWidth * 0.8); 
+        let left = rect.left + rect.width / 2 - tipWidth / 2;
+        left = Math.max(8, Math.min(left, window.innerWidth - tipWidth - 8));
+        
+        tip.style.left = left + 'px';
+        document.body.appendChild(tip);
+        
+        const tipHeight = tip.offsetHeight;
+        if (rect.top - tipHeight - 8 < 0) {
+          tip.style.top = (rect.bottom + 8) + 'px';
+          tip.classList.add('flip');
+        } else {
+          tip.style.top = (rect.top - tipHeight - 8) + 'px';
+          tip.classList.remove('flip');
+        }
+      }
+
+      document.querySelectorAll('.term').forEach(term => {
+        const tip = document.createElement('span');
+        tip.className = 'term-tooltip';
+        tip.textContent = term.dataset.definition;
+
+        const showTip = (e) => {
+          e.stopPropagation();
+          if (activeTooltip && activeTooltip !== tip) {
+            activeTooltip.classList.remove('visible');
+            activeTooltip.remove();
+          }
+          if (!tip.classList.contains('visible')) {
+            positionTooltip(term, tip);
+            requestAnimationFrame(() => tip.classList.add('visible'));
+            activeTooltip = tip;
+            term.classList.add('active');
+          }
+        };
+
+        const hideTip = () => {
+          tip.classList.remove('visible');
+          term.classList.remove('active');
+          setTimeout(() => { if (!tip.classList.contains('visible')) tip.remove(); }, 150);
+          if (activeTooltip === tip) activeTooltip = null;
+        };
+
+        term.addEventListener('mouseenter', showTip);
+        term.addEventListener('mouseleave', hideTip);
+        term.addEventListener('click', (e) => {
+            if(activeTooltip === tip) { hideTip(); } else { showTip(e); }
+        });
+      });
+
+      document.addEventListener('click', () => {
+        if (activeTooltip) {
+          activeTooltip.classList.remove('visible');
+          document.querySelectorAll('.term.active').forEach(t => t.classList.remove('active'));
+          activeTooltip.remove();
+          activeTooltip = null;
+        }
+      });
+
+      // 3. 群聊推演动画
+      let currentChatStep = 1;
+      window.playChatNext = function() {
+        if (currentChatStep > 4) {
+          for(let i=1; i<=4; i++) {
+            const msg = document.getElementById(`msg-${i}`);
+            msg.style.display = 'none';
+            msg.style.opacity = '0';
+            msg.style.transform = 'translateY(10px)';
+          }
+          currentChatStep = 1;
+          document.getElementById('chat-btn').innerText = "▶ 播放片场调度通讯";
+          return;
+        }
+        
+        const msg = document.getElementById(`msg-${currentChatStep}`);
+        msg.style.display = 'flex';
+        void msg.offsetWidth;
+        msg.style.transition = 'all 0.4s ease-out';
+        msg.style.opacity = '1';
+        msg.style.transform = 'translateY(0)';
+        
+        currentChatStep++;
+        document.getElementById('chat-btn').innerText = currentChatStep > 4 ? "↺ 重新播放" : `▶ 继续播放 (${currentChatStep-1}/4)`;
+      };
+
+      // 4. 剪辑流动画逻辑
+      const flowSteps = [
+        { label: "1. 第一步：grep 出马。它在一堆无用的废弃胶片中，一把抓出了所有带有 ERROR 标记的穿帮镜头片段。", active: "flow-grep", pktText: "抓取片段", pktFrom: "18%", pktTo: "46%" },
+        { label: "2. 第二步：片段送入管道，传给 sed 特效师。sed 将所有写着 ERROR 的英文字母，用特效画笔涂成了大写的 CRITICAL。", active: "flow-sed", pktText: "批量替换", pktFrom: "46%", pktTo: "46%" },
+        { label: "3. 第三步：sed 替换完后，把数据传给 awk 排版师。awk 把长句子切开，单独抽出最重要的第 3 列数据，并把它们加了起来。", active: "flow-awk", pktText: "切分计算", pktFrom: "46%", pktTo: "75%" },
+        { label: "4. 流水线竣工！这套组合拳将杂乱的日志变成了一份干净漂亮的数据报表。", active: "flow-awk", pktText: "成片输出!", pktFrom: "75%", pktTo: "75%" }
+      ];
+      let currentFlowStep = 0;
+      
+      window.flowNext = function() {
+        if (currentFlowStep >= flowSteps.length) {
+          currentFlowStep = 0;
+          document.getElementById('flow-btn').innerText = `下一步 (1/4)`;
+          document.getElementById('flow-label').innerText = "点击“下一步”启动剪辑流水线";
+          document.querySelectorAll('.flow-actor').forEach(el => el.classList.remove('active'));
+          document.getElementById('flow-packet').style.opacity = '0';
+          return;
+        }
+
+        const step = flowSteps[currentFlowStep];
+        document.getElementById('flow-label').innerText = step.label;
+        document.querySelectorAll('.flow-actor').forEach(el => el.classList.remove('active'));
+        document.getElementById(step.active).classList.add('active');
+
+        const pkt = document.getElementById('flow-packet');
+        pkt.innerText = step.pktText;
+        pkt.style.transition = 'none';
+        pkt.style.left = step.pktFrom;
+        pkt.style.opacity = '1';
+        
+        setTimeout(() => {
+          pkt.style.transition = 'all 0.6s ease';
+          pkt.style.left = step.pktTo;
+        }, 50);
+
+        currentFlowStep++;
+        document.getElementById('flow-btn').innerText = currentFlowStep === 4 ? "重新剪辑" : `下一步 (${currentFlowStep + 1}/4)`;
+      };
+
+      // 5. 测验逻辑
+      window.selectOption = function(btn) {
+        const container = btn.closest('.quiz-options');
+        container.querySelectorAll('.quiz-option').forEach(opt => opt.classList.remove('selected'));
+        btn.classList.add('selected');
+      };
+
+      window.checkQuiz = function() {
+        const selected = document.querySelector('#quiz-1 .quiz-option.selected');
+        const feedback = document.getElementById('quiz-1-feedback');
+        
+        if (!selected) {
+          feedback.innerHTML = '请先下达判断指令！';
+          feedback.className = 'quiz-feedback show error';
+          return;
+        }
+
+        const val = selected.getAttribute('data-value');
+        if (val === 'b') {
+          selected.classList.add('correct');
+          feedback.innerHTML = '<strong>极其敏锐的导演直觉！</strong><br>当加上 `sudo` 时，系统为了安全，会强制使用一个极度干净的、属于超级管理员的安全 `PATH` 名册。而你刚刚写的脚本在当前目录 (`./`)，并不在那个安全名册里，所以 sudo 就会一脸无辜地说：“查无此命令”。最稳妥的解法是直接提供完整的绝对路径！';
+          feedback.className = 'quiz-feedback show success';
+        } else if (val === 'a') {
+          selected.classList.add('incorrect');
+          feedback.innerHTML = '<strong>这是错觉。</strong><br>sudo 赋予你的是系统的最高特权（root），它绝对不可能剥夺你查看普通文件的权力。报错是 "command not found"（找不到命令），而不是 "permission denied"（权限拒绝）。';
+          feedback.className = 'quiz-feedback show error';
+        } else if (val === 'c') {
+          selected.classList.add('incorrect');
+          feedback.innerHTML = '<strong>排障方向错了。</strong><br>如果 Shebang 写错或者没加执行权限，系统的报错通常会是 "bad interpreter" 或者 "Permission denied"，而不会干脆地告诉你 "command not found"。找不到命令永远优先排查 PATH！';
+          feedback.className = 'quiz-feedback show error';
+        }
+        
+        document.querySelectorAll('#quiz-1 .quiz-option').forEach(btn => btn.style.pointerEvents = 'none');
+      };
+
+    })();
+  </script>
+</body>
+</html>

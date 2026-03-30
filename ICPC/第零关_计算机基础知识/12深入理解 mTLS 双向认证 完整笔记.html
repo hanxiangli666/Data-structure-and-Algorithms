@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>mTLS 双向认证：深空无人舰队的对接指令</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400;1,9..40,500&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  
+  <style>
+    /* === 核心设计系统 === */
+    :root {
+      --color-bg:             #FAF7F2;
+      --color-bg-warm:        #F5F0E8;
+      --color-bg-code:        #1A202C; /* 偏深空的蓝黑色 */
+      --color-text:           #2C2A28;
+      --color-text-secondary: #6B6560;
+      --color-border:         #E5DFD6;
+      --color-surface:        #FFFFFF;
+      --color-surface-warm:   #FDF9F3;
+      
+      /* 深空科技蓝 (Aerospace Teal) */
+      --color-accent:         #2A7B9B; 
+      --color-accent-hover:   #1E627D;
+      --color-accent-light:   #E4F2F7;
+      --color-accent-muted:   #81B8CD;
+      
+      --color-success:        #2D8B55;
+      --color-success-light:  #E8F5EE;
+      --color-error:          #C93B3B;
+      --color-error-light:    #FDE8E8;
+
+      /* 角色颜色 */
+      --color-actor-1:        #2A7B9B; /* 空间站/服务端 */
+      --color-actor-2:        #D4A843; /* 货运飞船/客户端 */
+      --color-actor-3:        #C93B3B; /* 星盗/伪造者 */
+
+      --font-display:  'Bricolage Grotesque', sans-serif;
+      --font-body:     'DM Sans', -apple-system, sans-serif;
+      --font-mono:     'JetBrains Mono', monospace;
+
+      --text-xs: 0.75rem; --text-sm: 0.875rem; --text-base: 1rem;
+      --text-lg: 1.125rem; --text-xl: 1.25rem; --text-2xl: 1.5rem;
+      --text-4xl: 2.25rem; --text-6xl: 3.75rem;
+
+      --space-2: 0.5rem; --space-3: 0.75rem; --space-4: 1rem; 
+      --space-6: 1.5rem; --space-8: 2rem; --space-12: 3rem; --space-16: 4rem;
+
+      --content-width: 800px;
+      --radius-sm: 8px; --radius-md: 12px;
+      --shadow-sm: 0 1px 2px rgba(44, 42, 40, 0.05);
+      --shadow-md: 0 4px 12px rgba(44, 42, 40, 0.08);
+      --shadow-lg: 0 8px 24px rgba(44, 42, 40, 0.1);
+      
+      --duration-fast: 150ms; --duration-normal: 300ms; --duration-slow: 500ms;
+    }
+
+    body { margin: 0; font-family: var(--font-body); color: var(--color-text); background: var(--color-bg); line-height: 1.6; background-image: radial-gradient(ellipse at 20% 50%, rgba(42, 123, 155, 0.04) 0%, transparent 50%); }
+    h1, h2, h3 { font-family: var(--font-display); line-height: 1.15; }
+    p { font-size: var(--text-lg); }
+
+    /* === 模块布局 === */
+    .module { min-height: 100vh; padding: var(--space-16) var(--space-6); border-bottom: 1px solid var(--color-border); }
+    .module:nth-child(even) { background: var(--color-bg-warm); }
+    .module-content { max-width: var(--content-width); margin: 0 auto; }
+    .module-number { font-size: var(--text-6xl); font-weight: 800; color: var(--color-accent); opacity: 0.15; display: block; margin-bottom: -20px; }
+    .module-title { font-size: var(--text-4xl); font-weight: 700; margin: 0 0 var(--space-2) 0; }
+    .module-subtitle { font-size: var(--text-xl); color: var(--color-text-secondary); margin-bottom: var(--space-12); }
+
+    /* === 交互词汇表 === */
+    .term { border-bottom: 2px dashed var(--color-accent-muted); cursor: pointer; position: relative; font-weight: 600; color: var(--color-accent); transition: all 0.2s; }
+    .term:hover, .term.active { border-bottom-color: var(--color-accent); color: var(--color-accent-hover); }
+    .term-tooltip { position: fixed; background: var(--color-bg-code); color: #CDD6F4; padding: var(--space-3) var(--space-4); border-radius: var(--radius-sm); font-size: var(--text-sm); font-family: var(--font-body); width: max(200px, min(320px, 80vw)); box-shadow: var(--shadow-lg); pointer-events: none; opacity: 0; transition: opacity var(--duration-fast); z-index: 10000; }
+    .term-tooltip::after { content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%); border: 6px solid transparent; border-top-color: var(--color-bg-code); }
+    .term-tooltip.visible { opacity: 1; }
+    .term-tooltip.flip { bottom: auto; top: calc(100% + 8px); }
+    .term-tooltip.flip::after { top: auto; bottom: 100%; border-top-color: transparent; border-bottom-color: var(--color-bg-code); }
+
+    /* === 卡片与 Callout === */
+    .callout { display: flex; gap: var(--space-4); padding: var(--space-4); background: var(--color-accent-light); border-left: 4px solid var(--color-accent); border-radius: 0 var(--radius-md) var(--radius-md) 0; margin: var(--space-6) 0; }
+    .callout-title { display: block; font-family: var(--font-display); font-size: var(--text-xl); margin-bottom: var(--space-2); color: var(--color-accent-hover);}
+    
+    .arch-cards { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-6); margin: var(--space-8) 0; }
+    .arch-card { background: var(--color-surface); padding: var(--space-6); border-radius: var(--radius-md); box-shadow: var(--shadow-sm); border-top: 4px solid var(--color-text-muted); }
+    .arch-card.highlight { border-top-color: var(--color-accent); box-shadow: var(--shadow-md); }
+
+    /* === 代码翻译块 === */
+    .translation-block { display: grid; grid-template-columns: 1fr 1fr; border-radius: var(--radius-md); overflow: hidden; box-shadow: var(--shadow-md); margin: var(--space-8) 0; }
+    .translation-code { background: var(--color-bg-code); color: #CDD6F4; padding: var(--space-6); font-family: var(--font-mono); font-size: var(--text-sm); position: relative; overflow-x: hidden;}
+    .translation-code pre { white-space: pre-wrap; word-break: break-word; margin: 0; padding-top: var(--space-6);}
+    .translation-english { background: var(--color-surface-warm); padding: var(--space-6); font-size: var(--text-sm); border-left: 3px solid var(--color-accent); position: relative; }
+    .translation-label { position: absolute; top: var(--space-2); right: var(--space-3); font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.1em; opacity: 0.5; }
+    .tl { margin-top: 22px; margin-bottom: 0; color: var(--color-text); }
+    .c-key { color: #CBA6F7; } .c-str { color: #A6E3A1; } .c-num { color: #FAB387; } .c-func { color: #89B4FA; }
+
+    /* === 群聊动画 === */
+    .chat-window { background: var(--color-bg-warm); border-radius: var(--radius-md); padding: var(--space-4); margin: var(--space-8) 0; border: 1px solid var(--color-border); }
+    .chat-message { display: flex; gap: var(--space-3); margin-bottom: var(--space-4); opacity: 0; transform: translateY(10px); }
+    .chat-avatar { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; flex-shrink: 0; font-size: 1.2rem; }
+    .chat-bubble { background: var(--color-surface); padding: var(--space-3) var(--space-4); border-radius: 0 var(--radius-md) var(--radius-md) var(--radius-md); box-shadow: var(--shadow-sm); max-width: 80%; }
+    .chat-sender { font-size: var(--text-xs); font-weight: bold; margin-bottom: 2px; display: block; }
+    
+    /* === 数据流动画 === */
+    .flow-animation { background: var(--color-surface); padding: var(--space-6); border-radius: var(--radius-md); box-shadow: var(--shadow-md); margin: var(--space-8) 0; text-align: center; }
+    .flow-actors { display: flex; justify-content: space-between; margin-bottom: var(--space-8); position: relative; padding: 0 40px;}
+    .flow-actor { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); z-index: 2; width: 25%; }
+    .flow-actor-icon { width: 60px; height: 60px; border-radius: 50%; background: var(--color-bg-warm); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; border: 2px solid var(--color-border); transition: all 0.3s ease; }
+    .flow-actor.active .flow-actor-icon { border-color: var(--color-accent); box-shadow: 0 0 0 4px var(--color-accent-light); transform: scale(1.1); }
+    .flow-packet { position: absolute; width: 80px; height: 26px; background: var(--color-accent); color: white; border-radius: var(--radius-sm); top: 18px; left: 15%; opacity: 0; transition: all 0.6s ease; z-index: 1; font-size: 11px; display: flex; align-items: center; justify-content: center; font-weight: bold;}
+    .flow-label { font-size: var(--text-lg); font-weight: 600; min-height: 4rem; margin-bottom: var(--space-4); }
+
+    /* === 测验 === */
+    .quiz-container { background: var(--color-surface); padding: var(--space-6); border-radius: var(--radius-md); box-shadow: var(--shadow-md); margin: var(--space-8) 0; }
+    .quiz-option { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-4); border: 2px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-surface); cursor: pointer; text-align: left; font-size: var(--text-base); transition: all 0.2s; margin-bottom: 10px; width: 100%; box-sizing: border-box;}
+    .quiz-option:hover { border-color: var(--color-accent-muted); }
+    .quiz-option.selected { border-color: var(--color-accent); background: var(--color-accent-light); }
+    .quiz-option.correct { border-color: var(--color-success); background: var(--color-success-light); }
+    .quiz-option.incorrect { border-color: var(--color-error); background: var(--color-error-light); }
+    .quiz-feedback { max-height: 0; overflow: hidden; opacity: 0; transition: all 0.3s; }
+    .quiz-feedback.show { max-height: 300px; opacity: 1; padding: var(--space-4); margin-top: var(--space-3); border-radius: var(--radius-sm); }
+    .quiz-feedback.success { background: var(--color-success-light); color: var(--color-success); border-left: 4px solid var(--color-success); }
+    .quiz-feedback.error { background: var(--color-error-light); color: var(--color-error); border-left: 4px solid var(--color-error); }
+
+    .btn { background: var(--color-accent); color: white; border: none; padding: var(--space-2) var(--space-4); border-radius: var(--radius-sm); cursor: pointer; font-size: var(--text-base); font-weight: bold; transition: all 0.2s; }
+    .btn:hover { background: var(--color-accent-hover); }
+    
+    .animate-in { opacity: 0; transform: translateY(20px); transition: all var(--duration-slow) ease-out; }
+    .animate-in.visible { opacity: 1; transform: translateY(0); }
+  </style>
+</head>
+<body>
+
+  <section class="module">
+    <div class="module-content">
+      <header class="module-header animate-in">
+        <span class="module-number">01</span>
+        <h1 class="module-title">气闸舱的双重验证</h1>
+        <p class="module-subtitle">普通 TLS 和 mTLS 在验证逻辑上究竟差在哪里？</p>
+      </header>
+
+      <div class="module-body animate-in">
+        <p>想象一个漂浮在深空的巨型星际补给站（服务器）。每天都有无数的飞船要与它进行气闸舱对接。</p>
+
+        <div class="arch-cards">
+          <div class="arch-card">
+            <h3 style="margin-top: 0">普通 TLS（单向认证）</h3>
+            <p>一艘载满民用游客的游轮靠近。游客们通过望远镜看到了补给站外壳上的“官方数字广播证书”，确认这不是星盗的陷阱。确认安全后，游客船对接登陆。</p>
+            <p style="color: var(--color-text-secondary); font-size: 0.9em;"><strong>特点：</strong>游客验证了空间站。但空间站<strong>根本不在乎游客是谁</strong>，因为公共商店是对所有人开放的。这就是我们每天浏览网页的方式。</p>
+          </div>
+          <div class="arch-card highlight">
+            <h3 style="margin-top: 0; color: var(--color-accent);">mTLS（双向认证）</h3>
+            <p>一艘载满高浓缩燃料的<strong>全自动无人货运飞船（微服务客户端）</strong>靠近。无人机扫描了空间站的证书，空间站也向无人机发出了指令：“把你的官方出厂证书也亮出来！”</p>
+            <p style="color: var(--color-text-secondary); font-size: 0.9em;"><strong>特点：</strong>双方都出示了证书并互相验证，一旦有一方对不上，气闸舱绝对不会打开。这就是 <strong><span class="term" data-definition="Mutual Transport Layer Security，双向传输层安全协议。客户端验证服务端，服务端同时验证客户端。">mTLS</span></strong>。</p>
+          </div>
+        </div>
+
+        <div class="callout">
+          <div class="callout-icon">💡</div>
+          <div class="callout-content">
+            <strong class="callout-title">边界极其重要：为什么不对人类用 mTLS？</strong>
+            <p style="margin-bottom:0">如果要求每个来访的游客都在身上植入一枚“官方数字微芯片（客户端证书）”，不仅成本极其高昂，一旦游客把芯片弄丢了，吊销和补发更是灾难。所以，**mTLS 几乎只用于“机器对机器（Service-to-Service）”的通信**，绝不用于普通的 B2C 网站登录。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="module">
+    <div class="module-content">
+      <header class="module-header animate-in">
+        <span class="module-number">02</span>
+        <h1 class="module-title">深空对接协议</h1>
+        <p class="module-subtitle">来看看无人机和空间站是如何在太空中互相手势确认的。</p>
+      </header>
+
+      <div class="module-body animate-in">
+        
+        <div class="flow-animation">
+          <h3 style="margin-top:0;">mTLS 握手对接全过程</h3>
+          <div class="flow-label" id="flow-label">点击“下一步”启动对接</div>
+          
+          <div class="flow-actors">
+            <div class="flow-actor" id="flow-client">
+              <div class="flow-actor-icon" style="font-size: 1.5rem; border-color: var(--color-actor-2)">🛸</div>
+              <span style="font-size: 0.85em; font-weight:bold; color: var(--color-actor-2)">货运无人机 (Client)</span>
+            </div>
+            <div class="flow-packet" id="flow-packet"></div>
+            <div class="flow-actor" id="flow-server">
+              <div class="flow-actor-icon" style="font-size: 1.5rem; border-color: var(--color-actor-1)">🛰️</div>
+              <span style="font-size: 0.85em; font-weight:bold; color: var(--color-actor-1)">空间站 (Server)</span>
+            </div>
+          </div>
+
+          <button class="btn" onclick="flowNext()" id="flow-btn">下一步 (1/4)</button>
+        </div>
+
+        <p>在普通 TLS 中，握手在第 2 步结束后就基本完成了。mTLS 正是多了“空间站索要凭证”和“无人机出示凭证及私钥签名”的步骤，才构成了严密的 <strong><span class="term" data-definition="Zero Trust。一种安全模型，不自动信任网络内部或外部的任何人/设备/系统，必须在每次连接时进行严格的身份验证。">零信任 (Zero Trust)</span></strong> 闭环。</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="module">
+    <div class="module-content">
+      <header class="module-header animate-in">
+        <span class="module-number">03</span>
+        <h1 class="module-title">永不停歇的芯片制造厂</h1>
+        <p class="module-subtitle">为什么说 mTLS 最大的痛点根本不在代码里？</p>
+      </header>
+
+      <div class="module-body animate-in">
+        <p>mTLS 在技术上很完美，但在工程运维中却是一场噩梦。因为证书是有有效期的！如果一艘无人机的身份芯片过期了，它就会像一块废铁一样被拒之门外，导致整个微服务链路崩溃。</p>
+        
+        <p>在现代 <strong><span class="term" data-definition="一个开源的容器集群管理系统，用于自动部署、扩展和管理容器化应用程序。">Kubernetes</span></strong> 云原生架构中，我们绝不能人工去替换证书。我们需要一个自动化工厂 —— <code>cert-manager</code>。它能赶在证书过期前，全自动地为每一个 <strong><span class="term" data-definition="Kubernetes 中最小的可部署计算单元，通常包含一个或多个紧密相关的容器。">Pod</span></strong> 签发和轮换新证书。</p>
+
+        <div class="translation-block">
+          <div class="translation-code">
+            <span class="translation-label">Cert-Manager 配置 (YAML)</span>
+            <pre><code><span class="c-key">apiVersion</span>: <span class="c-str">cert-manager.io/v1</span>
+<span class="c-key">kind</span>: <span class="c-str">Certificate</span>
+<span class="c-key">metadata</span>:
+  <span class="c-key">name</span>: <span class="c-str">drone-mtls-cert</span>
+<span class="c-key">spec</span>:
+  <span class="c-key">secretName</span>: <span class="c-str">drone-mtls-tls</span>
+  <span class="c-key">dnsNames</span>:
+    - <span class="c-str">drone.cargo.svc</span>
+  <span class="c-key">duration</span>: <span class="c-num">2160h</span>      <span class="code-comment"># 90天</span>
+  <span class="c-key">renewBefore</span>: <span class="c-num">360h</span>    <span class="code-comment"># 提前15天</span></code></pre>
+          </div>
+          <div class="translation-english">
+            <span class="translation-label">大白话翻译</span>
+            <div class="translation-lines">
+              <p class="tl">呼叫自动化证书工厂...</p>
+              <br><br>
+              <p class="tl" style="margin-top: 15px;">请立刻制造一个名为 drone-mtls-cert 的身份芯片。</p>
+              <br>
+              <p class="tl" style="margin-top: 15px;">把它悄悄挂载到无人机的保险箱 (Secret) 里。</p>
+              <p class="tl" style="margin-top: 5px;">这枚芯片的专属持有者名字叫 drone.cargo.svc。</p>
+              <br>
+              <p class="tl" style="margin-top: 5px;">芯片的自毁倒计时设定为 90 天。</p>
+              <p class="tl" style="margin-top: 5px;">最关键的一步：<strong>在芯片过期的前 15 天，自动启动流水线造一枚新的换上去</strong>，绝不让人工操心！</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="module">
+    <div class="module-content">
+      <header class="module-header animate-in">
+        <span class="module-number">04</span>
+        <h1 class="module-title">抛弃坐标，认准出厂钢印</h1>
+        <p class="module-subtitle">云原生时代的工作负载身份 (Workload Identity)。</p>
+      </header>
+
+      <div class="module-body animate-in">
+        <p>在古老的 IT 时代，服务器是通过 IP 地址来识别彼此的（比如“只允许来自 192.168.1.10 的请求”）。这就好比空间站只认“从 X轴42, Y轴89 坐标飞来的船”。</p>
+
+        <p>但在云原生时代，无人机（Pod）可能会在几秒钟内被摧毁并重新在另一个坐标（新 IP）发射升空。如果再依靠坐标来认人，系统会彻底混乱。</p>
+        
+        <p>于是，业界引入了 <strong><span class="term" data-definition="Secure Production Identity Framework for Everyone。一种开源的身份标准，为微服务分配加密验证的通用身份，彻底解绑 IP 地址。">SPIFFE</span></strong> 规范。它就像是打在飞船引擎上的<strong>唯一出厂钢印</strong>，无论飞船在宇宙的哪个坐标，只要出示带有 `spiffe://` 开头的身份证书，空间站就认它：</p>
+
+        <pre style="background: var(--color-bg-code); color: #A6E3A1; padding: 15px; border-radius: 8px; font-family: var(--font-mono); text-align: center; border-left: 4px solid var(--color-accent);"><code>spiffe://federation.space/ns/cargo/sa/drone-01</code></pre>
+      </div>
+    </div>
+  </section>
+
+  <section class="module">
+    <div class="module-content">
+      <header class="module-header animate-in">
+        <span class="module-number">05</span>
+        <h1 class="module-title">黑匣子解密：mTLS 调试</h1>
+        <p class="module-subtitle">气闸舱锁死了，该如何排查故障？</p>
+      </header>
+
+      <div class="module-body animate-in">
+        <p>mTLS 极度安全，但带来的副作用是：一旦网络不通，往往连错误信息都被加密了。这时候，最高指挥官必须掏出底层的探针工具：<code>openssl s_client</code>。</p>
+
+        <div class="chat-window">
+          <div id="chat-messages">
+            <div class="chat-message" id="msg-1" style="display:none;">
+              <div class="chat-avatar" style="background: var(--color-actor-2)">🚀</div>
+              <div class="chat-bubble">
+                <span class="chat-sender" style="color: var(--color-actor-2)">货运飞船控制台报错</span>
+                <p><code>[FATAL] Handshake failed: certificate required</code></p>
+              </div>
+            </div>
+            <div class="chat-message" id="msg-2" style="display:none;">
+              <div class="chat-avatar" style="background: var(--color-actor-1)">👨‍💻</div>
+              <div class="chat-bubble">
+                <span class="chat-sender" style="color: var(--color-actor-1)">架构师 (你)</span>
+                <p>看到 <code>certificate required</code>，说明空间站（Server）已经开启了 mTLS 强校验，正伸手要你的客户端证书。但你飞船起飞时，没有在命令里配置 <code>-cert</code> 和 <code>-key</code> 参数把芯片带上！</p>
+              </div>
+            </div>
+            <div class="chat-message" id="msg-3" style="display:none;">
+              <div class="chat-avatar" style="background: var(--color-actor-2)">🚀</div>
+              <div class="chat-bubble">
+                <span class="chat-sender" style="color: var(--color-actor-2)">货运飞船控制台报错 (重试)</span>
+                <p><code>[FATAL] Handshake failed: certificate verify failed</code></p>
+              </div>
+            </div>
+            <div class="chat-message" id="msg-4" style="display:none;">
+              <div class="chat-avatar" style="background: var(--color-actor-1)">👨‍💻</div>
+              <div class="chat-bubble">
+                <span class="chat-sender" style="color: var(--color-actor-1)">架构师 (你)</span>
+                <p>这次你带了证书，但被无情退回了。<code>verify failed</code> 通常意味着：<br>1. 你的证书过期了。<br>2. 你带了芯片，但你拿不出对应的私钥签名。<br>3. 空间站配置了 <strong><span class="term" data-definition="Server Name Indication。TLS 的一个扩展协议，允许客户端在握手之初告诉服务器它想访问的具体主机名（域名）。">SNI</span></strong> 拦截，你必须在探测时加上 <code>-servername</code> 参数对暗号！</p>
+              </div>
+            </div>
+          </div>
+          <button class="btn" style="margin-top:10px;" onclick="playChatNext()" id="chat-btn">▶ 播放故障排查记录</button>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <section class="module">
+    <div class="module-content">
+      <header class="module-header animate-in">
+        <span class="module-number">06</span>
+        <h1 class="module-title">舰队总指挥的决断</h1>
+        <p class="module-subtitle">不要滥用技术，认清 mTLS 的边界。</p>
+      </header>
+
+      <div class="module-body animate-in">
+        
+        <div class="quiz-container" id="quiz-1">
+          <h3>实战场景：你的公司刚开发了一款面向全球普通消费者的电商 APP。安全部门的负责人提出：“为了达到金融级的安全，我们应该在手机 APP 和后端服务器之间启用 mTLS 双向认证，给每个消费者的手机都发一个客户端证书。” 作为技术总监，你会同意吗？</h3>
+          <div class="quiz-options">
+            <button class="quiz-option" data-value="a" onclick="selectOption(this)">
+              A. 强烈同意。mTLS 是最高级别的安全保障，能彻底杜绝任何黑客伪装成 APP 发起恶意请求。
+            </button>
+            <button class="quiz-option" data-value="b" onclick="selectOption(this)">
+              B. 坚决反对。给几百万个不受控的普通用户手机分发、安装、更新客户端证书，在工程和体验上是灾难级的。面向 C 端用户的认证应该使用 OAuth 2.0、JWT 等令牌机制，mTLS 应该留给内部的服务器间调用。
+            </button>
+            <button class="quiz-option" data-value="c" onclick="selectOption(this)">
+              C. 同意，但为了省事，我们可以把唯一的一张客户端证书和私钥硬编码写死在 APP 的安装包里发给所有用户。
+            </button>
+          </div>
+          <div class="quiz-feedback" id="quiz-1-feedback"></div>
+          <button class="btn" style="margin-top:15px;" onclick="checkQuiz()">下达指令</button>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <script>
+    (function() {
+      // 1. 滚动动画
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('visible');
+            observer.unobserve(entry.target);
+          }
+        });
+      }, { rootMargin: '0px 0px -10% 0px', threshold: 0.1 });
+      document.querySelectorAll('.animate-in').forEach(el => observer.observe(el));
+
+      // 2. Tooltip 悬浮字典
+      let activeTooltip = null;
+      function positionTooltip(term, tip) {
+        const rect = term.getBoundingClientRect();
+        const tipWidth = Math.min(320, window.innerWidth * 0.8); 
+        let left = rect.left + rect.width / 2 - tipWidth / 2;
+        left = Math.max(8, Math.min(left, window.innerWidth - tipWidth - 8));
+        
+        tip.style.left = left + 'px';
+        document.body.appendChild(tip);
+        
+        const tipHeight = tip.offsetHeight;
+        if (rect.top - tipHeight - 8 < 0) {
+          tip.style.top = (rect.bottom + 8) + 'px';
+          tip.classList.add('flip');
+        } else {
+          tip.style.top = (rect.top - tipHeight - 8) + 'px';
+          tip.classList.remove('flip');
+        }
+      }
+
+      document.querySelectorAll('.term').forEach(term => {
+        const tip = document.createElement('span');
+        tip.className = 'term-tooltip';
+        tip.textContent = term.dataset.definition;
+
+        const showTip = (e) => {
+          e.stopPropagation();
+          if (activeTooltip && activeTooltip !== tip) {
+            activeTooltip.classList.remove('visible');
+            activeTooltip.remove();
+          }
+          if (!tip.classList.contains('visible')) {
+            positionTooltip(term, tip);
+            requestAnimationFrame(() => tip.classList.add('visible'));
+            activeTooltip = tip;
+            term.classList.add('active');
+          }
+        };
+
+        const hideTip = () => {
+          tip.classList.remove('visible');
+          term.classList.remove('active');
+          setTimeout(() => { if (!tip.classList.contains('visible')) tip.remove(); }, 150);
+          if (activeTooltip === tip) activeTooltip = null;
+        };
+
+        term.addEventListener('mouseenter', showTip);
+        term.addEventListener('mouseleave', hideTip);
+        term.addEventListener('click', (e) => {
+            if(activeTooltip === tip) { hideTip(); } else { showTip(e); }
+        });
+      });
+
+      document.addEventListener('click', () => {
+        if (activeTooltip) {
+          activeTooltip.classList.remove('visible');
+          document.querySelectorAll('.term.active').forEach(t => t.classList.remove('active'));
+          activeTooltip.remove();
+          activeTooltip = null;
+        }
+      });
+
+      // 3. 群聊推演动画
+      let currentChatStep = 1;
+      window.playChatNext = function() {
+        if (currentChatStep > 4) {
+          for(let i=1; i<=4; i++) {
+            const msg = document.getElementById(`msg-${i}`);
+            msg.style.display = 'none';
+            msg.style.opacity = '0';
+            msg.style.transform = 'translateY(10px)';
+          }
+          currentChatStep = 1;
+          document.getElementById('chat-btn').innerText = "▶ 播放故障排查记录";
+          return;
+        }
+        
+        const msg = document.getElementById(`msg-${currentChatStep}`);
+        msg.style.display = 'flex';
+        void msg.offsetWidth;
+        msg.style.transition = 'all 0.4s ease-out';
+        msg.style.opacity = '1';
+        msg.style.transform = 'translateY(0)';
+        
+        currentChatStep++;
+        document.getElementById('chat-btn').innerText = currentChatStep > 4 ? "↺ 重新排查" : `▶ 继续分析 (${currentChatStep-1}/4)`;
+      };
+
+      // 4. mTLS 流动画逻辑
+      const flowSteps = [
+        { label: "1. 飞船请求对接 (ClientHello)。", active: "flow-client", pktText: "请求对接", pktFrom: "18%", pktTo: "75%" },
+        { label: "2. 空间站亮出自己的官方证书，并大喊：“要对接可以，把你的身份芯片拿出来！” (CertificateRequest)", active: "flow-server", pktText: "空间站证书+要求对方出示", pktFrom: "75%", pktTo: "18%" },
+        { label: "3. 飞船验证了空间站没问题，随后交出自己的证书，并用私钥签了个名证明没有造假。", active: "flow-client", pktText: "飞船证书+私钥签名", pktFrom: "18%", pktTo: "75%" },
+        { label: "4. 空间站验证飞船的芯片合法，且签名通过！气闸舱开启，建立绝对安全的加密通道。", active: "flow-server", pktText: "验证通过，开启舱门", pktFrom: "75%", pktTo: "75%" }
+      ];
+      let currentFlowStep = 0;
+      
+      window.flowNext = function() {
+        if (currentFlowStep >= flowSteps.length) {
+          currentFlowStep = 0;
+          document.getElementById('flow-btn').innerText = `下一步 (1/4)`;
+          document.getElementById('flow-label').innerText = "点击“下一步”启动对接";
+          document.querySelectorAll('.flow-actor').forEach(el => el.classList.remove('active'));
+          document.getElementById('flow-packet').style.opacity = '0';
+          return;
+        }
+
+        const step = flowSteps[currentFlowStep];
+        document.getElementById('flow-label').innerText = step.label;
+        document.querySelectorAll('.flow-actor').forEach(el => el.classList.remove('active'));
+        document.getElementById(step.active).classList.add('active');
+
+        const pkt = document.getElementById('flow-packet');
+        pkt.innerText = step.pktText;
+        pkt.style.transition = 'none';
+        pkt.style.left = step.pktFrom;
+        pkt.style.opacity = '1';
+        
+        setTimeout(() => {
+          pkt.style.transition = 'all 0.6s ease';
+          pkt.style.left = step.pktTo;
+        }, 50);
+
+        currentFlowStep++;
+        document.getElementById('flow-btn').innerText = currentFlowStep === 4 ? "重新对接" : `下一步 (${currentFlowStep + 1}/4)`;
+      };
+
+      // 5. 测验逻辑
+      window.selectOption = function(btn) {
+        const container = btn.closest('.quiz-options');
+        container.querySelectorAll('.quiz-option').forEach(opt => opt.classList.remove('selected'));
+        btn.classList.add('selected');
+      };
+
+      window.checkQuiz = function() {
+        const selected = document.querySelector('#quiz-1 .quiz-option.selected');
+        const feedback = document.getElementById('quiz-1-feedback');
+        
+        if (!selected) {
+          feedback.innerHTML = '请先下达决策！';
+          feedback.className = 'quiz-feedback show error';
+          return;
+        }
+
+        const val = selected.getAttribute('data-value');
+        if (val === 'b') {
+          selected.classList.add('correct');
+          feedback.innerHTML = '<strong>极其清醒的判断！</strong><br>架构设计最大的忌讳就是“拿着锤子找钉子”。mTLS 是为微服务（M2M）打造的重型装甲，强行套在 C 端用户身上只会导致运维崩溃。面对 C 端用户，标准做法依然是单向 TLS 配合业务层的身份认证令牌。';
+          feedback.className = 'quiz-feedback show success';
+        } else if (val === 'a') {
+          selected.classList.add('incorrect');
+          feedback.innerHTML = '<strong>脱离了工程实际。</strong><br>理论上安全，但实际上当用户的手机因为系统更新、缓存清理导致证书丢失时，你的客服电话会被打爆。而且撤销数百万张证书将引发巨大的性能灾难。';
+          feedback.className = 'quiz-feedback show error';
+        } else if (val === 'c') {
+          selected.classList.add('incorrect');
+          feedback.innerHTML = '<strong>这是严重的低级错误！</strong><br>这就好比把无人机的最高密级防伪印章印在了每一份公开发放的广告单上。只要一个黑客反编译了你的 APP 安装包拿到了私钥，整个 mTLS 防线瞬间土崩瓦解。';
+          feedback.className = 'quiz-feedback show error';
+        }
+        
+        document.querySelectorAll('#quiz-1 .quiz-option').forEach(btn => btn.style.pointerEvents = 'none');
+      };
+
+    })();
+  </script>
+</body>
+</html>

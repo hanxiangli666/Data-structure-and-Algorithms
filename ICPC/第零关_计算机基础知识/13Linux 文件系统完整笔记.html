@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Linux 文件系统：超级大都会的城市规划局</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400;1,9..40,500&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  
+  <style>
+    /* === 核心设计系统 === */
+    :root {
+      --color-bg:             #F4F7F9; /* 偏冷灰的城市基调 */
+      --color-bg-warm:        #EDF2F7;
+      --color-bg-code:        #1A202C;
+      --color-text:           #2D3748;
+      --color-text-secondary: #4A5568;
+      --color-text-muted:     #A0AEC0;
+      --color-border:         #E2E8F0;
+      --color-surface:        #FFFFFF;
+      --color-surface-warm:   #F7FAFC;
+      
+      /* 城市蓝图主色调 (Blueprint Blue) */
+      --color-accent:         #0284C7; 
+      --color-accent-hover:   #0369A1;
+      --color-accent-light:   #E0F2FE;
+      --color-accent-muted:   #7DD3FC;
+      
+      --color-success:        #059669;
+      --color-success-light:  #D1FAE5;
+      --color-error:          #DC2626;
+      --color-error-light:    #FEE2E2;
+
+      /* 角色颜色 */
+      --color-actor-1:        #0284C7; /* 首席规划师 (Root) */
+      --color-actor-2:        #059669; /* 市政厅 (/etc) */
+      --color-actor-3:        #D97706; /* 调度中心 (/bin & /mnt) */
+
+      --font-display:  'Bricolage Grotesque', sans-serif;
+      --font-body:     'DM Sans', -apple-system, sans-serif;
+      --font-mono:     'JetBrains Mono', monospace;
+
+      --text-xs: 0.75rem; --text-sm: 0.875rem; --text-base: 1rem;
+      --text-lg: 1.125rem; --text-xl: 1.25rem; --text-2xl: 1.5rem;
+      --text-4xl: 2.25rem; --text-6xl: 3.75rem;
+
+      --space-2: 0.5rem; --space-3: 0.75rem; --space-4: 1rem; 
+      --space-6: 1.5rem; --space-8: 2rem; --space-12: 3rem; --space-16: 4rem;
+
+      --content-width: 800px;
+      --radius-sm: 8px; --radius-md: 12px;
+      --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+      --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+      --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.1);
+      
+      --duration-fast: 150ms; --duration-normal: 300ms; --duration-slow: 500ms;
+    }
+
+    body { margin: 0; font-family: var(--font-body); color: var(--color-text); background: var(--color-bg); line-height: 1.6; background-image: radial-gradient(ellipse at 20% 50%, rgba(2, 132, 199, 0.05) 0%, transparent 50%); }
+    h1, h2, h3 { font-family: var(--font-display); line-height: 1.15; }
+    p { font-size: var(--text-lg); }
+
+    /* === 模块布局 === */
+    .module { min-height: 100vh; padding: var(--space-16) var(--space-6); border-bottom: 1px solid var(--color-border); }
+    .module:nth-child(even) { background: var(--color-bg-warm); }
+    .module-content { max-width: var(--content-width); margin: 0 auto; }
+    .module-number { font-size: var(--text-6xl); font-weight: 800; color: var(--color-accent); opacity: 0.15; display: block; margin-bottom: -20px; }
+    .module-title { font-size: var(--text-4xl); font-weight: 700; margin: 0 0 var(--space-2) 0; }
+    .module-subtitle { font-size: var(--text-xl); color: var(--color-text-secondary); margin-bottom: var(--space-12); }
+
+    /* === 交互词汇表 === */
+    .term { border-bottom: 2px dashed var(--color-accent-muted); cursor: pointer; position: relative; font-weight: 600; color: var(--color-accent); transition: all 0.2s; }
+    .term:hover, .term.active { border-bottom-color: var(--color-accent); color: var(--color-accent-hover); }
+    .term-tooltip { position: fixed; background: var(--color-bg-code); color: #E2E8F0; padding: var(--space-3) var(--space-4); border-radius: var(--radius-sm); font-size: var(--text-sm); font-family: var(--font-body); width: max(200px, min(320px, 80vw)); box-shadow: var(--shadow-lg); pointer-events: none; opacity: 0; transition: opacity var(--duration-fast); z-index: 10000; }
+    .term-tooltip::after { content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%); border: 6px solid transparent; border-top-color: var(--color-bg-code); }
+    .term-tooltip.visible { opacity: 1; }
+    .term-tooltip.flip { bottom: auto; top: calc(100% + 8px); }
+    .term-tooltip.flip::after { top: auto; bottom: 100%; border-top-color: transparent; border-bottom-color: var(--color-bg-code); }
+
+    /* === 卡片与 Callout === */
+    .callout { display: flex; gap: var(--space-4); padding: var(--space-4); background: var(--color-accent-light); border-left: 4px solid var(--color-accent); border-radius: 0 var(--radius-md) var(--radius-md) 0; margin: var(--space-6) 0; }
+    .callout-title { display: block; font-family: var(--font-display); font-size: var(--text-xl); margin-bottom: var(--space-2); color: var(--color-accent-hover);}
+
+    /* === 代码翻译块 === */
+    .translation-block { display: grid; grid-template-columns: 1fr 1fr; border-radius: var(--radius-md); overflow: hidden; box-shadow: var(--shadow-md); margin: var(--space-8) 0; }
+    .translation-code { background: var(--color-bg-code); color: #E2E8F0; padding: var(--space-6); font-family: var(--font-mono); font-size: var(--text-sm); position: relative; overflow-x: hidden;}
+    .translation-code pre { white-space: pre-wrap; word-break: break-word; margin: 0; padding-top: var(--space-6);}
+    .translation-english { background: var(--color-surface-warm); padding: var(--space-6); font-size: var(--text-sm); border-left: 3px solid var(--color-accent); position: relative; }
+    .translation-label { position: absolute; top: var(--space-2); right: var(--space-3); font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.1em; opacity: 0.5; }
+    .tl { margin-top: 22px; margin-bottom: 0; color: var(--color-text); }
+    .c-key { color: #CBA6F7; } .c-str { color: #A6E3A1; } .c-num { color: #FAB387; } .c-cmd { color: #89B4FA; } .c-arg { color: #94E2D5; }
+
+    /* === 群聊动画 === */
+    .chat-window { background: var(--color-bg-warm); border-radius: var(--radius-md); padding: var(--space-4); margin: var(--space-8) 0; border: 1px solid var(--color-border); }
+    .chat-message { display: flex; gap: var(--space-3); margin-bottom: var(--space-4); opacity: 0; transform: translateY(10px); }
+    .chat-avatar { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; flex-shrink: 0; font-size: 1.2rem; }
+    .chat-bubble { background: var(--color-surface); padding: var(--space-3) var(--space-4); border-radius: 0 var(--radius-md) var(--radius-md) var(--radius-md); box-shadow: var(--shadow-sm); max-width: 80%; }
+    .chat-sender { font-size: var(--text-xs); font-weight: bold; margin-bottom: 2px; display: block; }
+    
+    /* === 数据流动画 === */
+    .flow-animation { background: var(--color-surface); padding: var(--space-6); border-radius: var(--radius-md); box-shadow: var(--shadow-md); margin: var(--space-8) 0; text-align: center; }
+    .flow-actors { display: flex; justify-content: space-between; margin-bottom: var(--space-8); position: relative; padding: 0 40px;}
+    .flow-actor { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); z-index: 2; width: 20%; }
+    .flow-actor-icon { width: 60px; height: 60px; border-radius: 50%; background: var(--color-bg-warm); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; border: 2px solid var(--color-border); transition: all 0.3s ease; }
+    .flow-actor.active .flow-actor-icon { border-color: var(--color-accent); box-shadow: 0 0 0 4px var(--color-accent-light); transform: scale(1.1); }
+    .flow-packet { position: absolute; width: 70px; height: 26px; background: var(--color-accent); color: white; border-radius: var(--radius-sm); top: 18px; left: 15%; opacity: 0; transition: all 0.6s ease; z-index: 1; font-size: 11px; display: flex; align-items: center; justify-content: center; font-weight: bold;}
+    .flow-label { font-size: var(--text-lg); font-weight: 600; min-height: 4rem; margin-bottom: var(--space-4); }
+
+    /* === 图标卡片列 === */
+    .icon-rows { display: flex; flex-direction: column; gap: var(--space-4); margin: var(--space-8) 0;}
+    .icon-row { display: flex; align-items: center; gap: var(--space-4); padding: var(--space-4); background: var(--color-surface); border-radius: var(--radius-md); box-shadow: var(--shadow-sm); border-left: 4px solid var(--color-accent);}
+    .icon-row p { margin: 0; color: var(--color-text-secondary); font-size: var(--text-sm); }
+    .icon-circle { width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.25rem; flex-shrink: 0; color: white; background: var(--color-accent-light);}
+
+    /* === 测验 === */
+    .quiz-container { background: var(--color-surface); padding: var(--space-6); border-radius: var(--radius-md); box-shadow: var(--shadow-md); margin: var(--space-8) 0; }
+    .quiz-option { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-4); border: 2px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-surface); cursor: pointer; text-align: left; font-size: var(--text-base); transition: all 0.2s; margin-bottom: 10px; width: 100%; box-sizing: border-box;}
+    .quiz-option:hover { border-color: var(--color-accent-muted); }
+    .quiz-option.selected { border-color: var(--color-accent); background: var(--color-accent-light); }
+    .quiz-option.correct { border-color: var(--color-success); background: var(--color-success-light); }
+    .quiz-option.incorrect { border-color: var(--color-error); background: var(--color-error-light); }
+    .quiz-feedback { max-height: 0; overflow: hidden; opacity: 0; transition: all 0.3s; }
+    .quiz-feedback.show { max-height: 300px; opacity: 1; padding: var(--space-4); margin-top: var(--space-3); border-radius: var(--radius-sm); }
+    .quiz-feedback.success { background: var(--color-success-light); color: var(--color-success); border-left: 4px solid var(--color-success); }
+    .quiz-feedback.error { background: var(--color-error-light); color: var(--color-error); border-left: 4px solid var(--color-error); }
+
+    .btn { background: var(--color-accent); color: white; border: none; padding: var(--space-2) var(--space-4); border-radius: var(--radius-sm); cursor: pointer; font-size: var(--text-base); font-weight: bold; transition: all 0.2s; }
+    .btn:hover { background: var(--color-accent-hover); }
+    
+    .animate-in { opacity: 0; transform: translateY(20px); transition: all var(--duration-slow) ease-out; }
+    .animate-in.visible { opacity: 1; transform: translateY(0); }
+  </style>
+</head>
+<body>
+
+  <section class="module">
+    <div class="module-content">
+      <header class="module-header animate-in">
+        <span class="module-number">01</span>
+        <h1 class="module-title">告别盘符：大都会的中央广场</h1>
+        <p class="module-subtitle">为什么 Linux 里没有 C盘 和 D盘？</p>
+      </header>
+
+      <div class="module-body animate-in">
+        <p>如果你习惯了 Windows，你可能会觉得电脑是由一个个独立运作的“城堡”（C盘、D盘、E盘）组成的。但在 Linux 的世界里，这种概念完全不存在。</p>
+        
+        <p>Linux 是一个被**高度统一规划的超级大都会**。这座城市只有一个绝对的中心起点——被称为 <strong><span class="term" data-definition="根目录（Root Directory）。Linux 文件系统的绝对顶层，用一个斜杠 `/` 表示，所有其他目录和文件都在它之下。">根目录 ( / )</span></strong> 的中央广场。</p>
+        
+        <p>在这个城市里，所有的街区（目录）和外部物资（外接硬盘、U盘），都必须通过一条马路，老老实实地接入到这个中央广场的辐射网络中。这就是 Linux 最核心的哲学：“万物皆文件，一树连所有”。</p>
+
+        <div class="callout">
+          <div class="callout-icon">💡</div>
+          <div class="callout-content">
+            <strong class="callout-title">直觉转换</strong>
+            <p style="margin-bottom:0">不要再问“我的 D 盘去哪了”。在 Linux 里，你的第二块硬盘可能只是被规划成了城市东南角的一个叫 <code>/data</code> 的新开发区而已。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="module">
+    <div class="module-content">
+      <header class="module-header animate-in">
+        <span class="module-number">02</span>
+        <h1 class="module-title">大都会区划指南</h1>
+        <p class="module-subtitle">当服务崩溃或找不到命令时，你应该去哪个区？</p>
+      </header>
+
+      <div class="module-body animate-in">
+        <p>作为市长，你不需要记住每一条街道的名字，但你必须清楚这座城市的**功能区划（Zoning）**。当你遇到问题时，直奔对应的区域：</p>
+
+        <div class="icon-rows">
+          <div class="icon-row">
+            <div class="icon-circle" style="background: var(--color-actor-2)">🏛️</div>
+            <div>
+              <strong>/etc (市政厅与档案馆)</strong>
+              <p>存放着整个城市**所有的配置文件**。想要修改网络 IP、调整 Nginx 服务器的规则、改密码策略？来这里找文本文件。</p>
+            </div>
+          </div>
+          <div class="icon-row">
+            <div class="icon-circle" style="background: var(--color-actor-3)">🧰</div>
+            <div>
+              <strong>/bin & /sbin (公共事务局与警卫处)</strong>
+              <p>存放着城市运转的基础**命令与工具**（比如 <code>ls</code>, <code>cp</code>）。带 <code>s</code> 的 <code>/sbin</code> 存放的是只有高级管理员（sudo）才能动用的高危命令（如配网、重启）。</p>
+            </div>
+          </div>
+          <div class="icon-row">
+            <div class="icon-circle" style="background: var(--color-text-muted)">🏭</div>
+            <div>
+              <strong>/var (工业区与垃圾处理厂)</strong>
+              <p>Var 代表 Variable（可变的）。这里存放着城市里**不断变化的数据**。比如所有的排查错误必备的运行日志 <code>/var/log</code>，以及数据库文件。</p>
+            </div>
+          </div>
+          <div class="icon-row">
+            <div class="icon-circle" style="background: var(--color-accent)">🏡</div>
+            <div>
+              <strong>/home (居民生活区)</strong>
+              <p>普通市民（用户）的私人住宅区。比如 <code>/home/alice</code>。每个人的私人物品和个性化配置（如 <code>~/.config</code>）都存在这里。</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <section class="module">
+    <div class="module-content">
+      <header class="module-header animate-in">
+        <span class="module-number">03</span>
+        <h1 class="module-title">物流港口的货物交接</h1>
+        <p class="module-subtitle">什么是“挂载 (Mount)”？</p>
+      </header>
+
+      <div class="module-body animate-in">
+        <p>如果有外部的物资运到了城市（比如你插上了一个 1TB 的外接硬盘，在系统里显示为 <code>/dev/sdb1</code>），它不能直接在城市里使用。</p>
+        
+        <p>你必须在城市里划出一块空地（通常是在 <strong><span class="term" data-definition="临时挂载点目录。系统管理员手工挂载各种临时存储设备（如测试硬盘、网络共享盘）的常用位置。">/mnt</span></strong> 或自动在 <code>/media</code> 下），然后建立一条连接。这个“建立连接，让外部硬盘变成城市里一个普通目录”的动作，就叫做 <strong>挂载 (Mount)</strong>。</p>
+
+        <div class="flow-animation">
+          <h3 style="margin-top:0;">外接硬盘挂载流程</h3>
+          <div class="flow-label" id="flow-label">点击“下一步”开始操作</div>
+          
+          <div class="flow-actors">
+            <div class="flow-actor" id="flow-drive">
+              <div class="flow-actor-icon" style="font-size: 1.5rem; border-color: var(--color-actor-3)">💾</div>
+              <span style="font-size: 0.85em; font-weight:bold; color: var(--color-actor-3)">外接物理硬盘<br>(/dev/sdb1)</span>
+            </div>
+            <div class="flow-packet" id="flow-packet"></div>
+            <div class="flow-actor" id="flow-admin">
+              <div class="flow-actor-icon" style="font-size: 1.5rem; border-color: var(--color-actor-1)">👷</div>
+              <span style="font-size: 0.85em; font-weight:bold; color: var(--color-actor-1)">管理员 (你)</span>
+            </div>
+            <div class="flow-actor" id="flow-mnt">
+              <div class="flow-actor-icon" style="font-size: 1.5rem; border-color: var(--color-actor-2)">🏗️</div>
+              <span style="font-size: 0.85em; font-weight:bold; color: var(--color-actor-2)">城市空地目录<br>(/mnt/data)</span>
+            </div>
+          </div>
+
+          <button class="btn" onclick="flowNext()" id="flow-btn">下一步 (1/3)</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="module">
+    <div class="module-content">
+      <header class="module-header animate-in">
+        <span class="module-number">04</span>
+        <h1 class="module-title">建筑安保门禁法则</h1>
+        <p class="module-subtitle">读懂天书般的 rwx 和 755。</p>
+      </header>
+
+      <div class="module-body animate-in">
+        <p>在 Linux 城市里，每一栋建筑（文件/目录）都有极其严格的门禁系统。当你输入命令遇到 `Permission Denied`（权限被拒绝）时，就需要动用 <strong><span class="term" data-definition="Change Mode。用于改变文件或目录的访问权限（读、写、执行）的命令。">chmod</span></strong>（改权限）和 <strong><span class="term" data-definition="Change Owner。用于改变文件或目录的拥有者（所属用户）和所属群组的命令。">chown</span></strong>（改归属）了。</p>
+        
+        <p>门禁权限分三层，每层用三个字母 <code>rwx</code> 表示（<code>r</code>=读/看, <code>w</code>=写/改, <code>x</code>=执行/进入）：</p>
+        <ul style="font-size: var(--text-lg); color: var(--color-text-secondary)">
+          <li><strong>第一层（拥有者）</strong>：房主本人能干啥。</li>
+          <li><strong>第二层（群组）</strong>：房主的家人/同组人能干啥。</li>
+          <li><strong>第三层（其他人）</strong>：街上的陌生人能干啥。</li>
+        </ul>
+
+        <div class="translation-block">
+          <div class="translation-code">
+            <span class="translation-label">权限变更指令</span>
+            <pre><code><span class="code-comment"># 1. 改变权限 (r=4, w=2, x=1)</span>
+<span class="code-comment"># 用户=4+2+1(7), 组=4+0+1(5), 其他=4+0+1(5)</span>
+<span class="c-cmd">chmod</span> <span class="c-num">755</span> script.sh
+
+<span class="code-comment"># 2. 改变文件的归属者和归属组</span>
+<span class="c-cmd">chown</span> <span class="c-arg">alice:dev</span> file.txt</code></pre>
+          </div>
+          <div class="translation-english">
+            <span class="translation-label">大白话翻译</span>
+            <div class="translation-lines">
+              <p class="tl" style="margin-top: 15px;">给 <code>script.sh</code> 这个脚本重新设置门禁密码：</p>
+              <p class="tl" style="margin-top: 5px;">房主拥有 7 (读4+写2+执行1) 的绝对权力；</p>
+              <p class="tl" style="margin-top: -5px;">同组人和陌生人只有 5 (读4+无0+执行1) 的权力，也就是**只能看和运行，绝对不准修改它！**</p>
+              <br>
+              <p class="tl" style="margin-top: 0px;">把 <code>file.txt</code> 这个文件的房产证，正式过户给叫 <code>alice</code> 的人，并划归到 <code>dev</code> 这个家族群组里。</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="chat-window">
+          <div id="chat-messages">
+            <div class="chat-message" id="msg-1" style="display:none;">
+              <div class="chat-avatar" style="background: var(--color-actor-3)">🧑‍💻</div>
+              <div class="chat-bubble">
+                <span class="chat-sender" style="color: var(--color-actor-3)">普通开发者</span>
+                <p>市长！我刚往 <code>/opt/myapp</code> 里部署了代码，但程序启动时报错：日志写入失败，Permission Denied！</p>
+              </div>
+            </div>
+            <div class="chat-message" id="msg-2" style="display:none;">
+              <div class="chat-avatar" style="background: var(--color-actor-1)">👑</div>
+              <div class="chat-bubble">
+                <span class="chat-sender" style="color: var(--color-actor-1)">首席规划师 (Root)</span>
+                <p>因为 <code>/opt</code> 这个地段是系统公产（拥有者是 root），你的服务进程没有写入（w）权限。你应该用 <code>chown -R 你的服务名:你的组名 /opt/myapp</code> 把那栋楼的产权交给你的程序！</p>
+              </div>
+            </div>
+          </div>
+          <button class="btn" style="margin-top:10px;" onclick="playChatNext()" id="chat-btn">▶ 播放政务求助录音</button>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <section class="module">
+    <div class="module-content">
+      <header class="module-header animate-in">
+        <span class="module-number">05</span>
+        <h1 class="module-title">任意门与传送牌</h1>
+        <p class="module-subtitle">搞懂硬链接 (Hard Link) 与软链接 (Symlink)。</p>
+      </header>
+
+      <div class="module-body animate-in">
+        <p>在规划城市时，你可能希望从不同的街区都能快速到达同一个设施。Linux 提供了两种魔法：</p>
+
+        <div class="arch-cards">
+          <div class="arch-card">
+            <h3 style="margin-top: 0">硬链接 (Hard Link)</h3>
+            <p>相当于给同一个物理房间（底层数据区 <strong><span class="term" data-definition="索引节点。Linux 文件系统中用来存储文件元数据（除了文件名以外的所有信息，如物理位置、大小、权限）的数据结构。">inode</span></strong>）开了**两扇平等的真门**。无论你炸掉（删除）哪扇门，只要还有一扇门在，房间里的东西就完好无损。</p>
+            <p style="color: var(--color-text-secondary); font-size: 0.9em;"><strong>局限：</strong>无法跨越不同的文件系统（不能建一扇门直通外接硬盘），且通常不能对目录使用。</p>
+          </div>
+          <div class="arch-card highlight">
+            <h3 style="margin-top: 0; color: var(--color-accent);">软链接 (Symbolic Link)</h3>
+            <p>生成命令加了 <code>-s</code> 参数。它就像在街上立了一块**“传送路牌（快捷方式）”**。路牌上写着“目标在 5 号街区”。</p>
+            <p style="color: var(--color-text-secondary); font-size: 0.9em;"><strong>注意：</strong>它可以跨系统、跨目录！但如果原本那栋楼被强拆了，这块路牌就会变成“悬挂链接（死链）”，你点进去会报错说找不到文件。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="module">
+    <div class="module-content">
+      <header class="module-header animate-in">
+        <span class="module-number">06</span>
+        <h1 class="module-title">市长的危机决策</h1>
+        <p class="module-subtitle">当城市面临空间枯竭，你该如何排查？</p>
+      </header>
+
+      <div class="module-body animate-in">
+        <p>服务器磁盘报警是日常最常见的危机之一。拯救城市，你需要熟练运用这两个空间雷达命令：<strong><span class="term" data-definition="disk free。用于查看各个文件系统（分区/挂载点）的整体剩余空间。加 -h 参数可以显示为人类易读的 GB/MB 单位。">df -h</span></strong>（看整体分区剩余）和 <strong><span class="term" data-definition="disk usage。用于统计指定目录及其子目录所占用的实际物理空间大小。加 -sh 参数可以汇总显示易读结果。">du -sh *</span></strong>（看具体目录谁最占地方）。</p>
+        
+        <div class="quiz-container" id="quiz-1">
+          <h3>紧急突发：凌晨 3 点，系统疯狂报警显示“根目录 `/` 空间已满 100%”，导致所有数据库服务集体崩溃。作为紧急上线的首席规划师，你的第一反应排查动作应该是什么？</h3>
+          <div class="quiz-options">
+            <button class="quiz-option" data-value="a" onclick="selectOption(this)">
+              A. 立刻跑到 /home 居民区，用 `rm -rf` 随机删除几个普通用户存的大电影文件来腾出空间。
+            </button>
+            <button class="quiz-option" data-value="b" onclick="selectOption(this)">
+              B. 立刻跑到 /bin (公共事务局)，删除一些平时不怎么用的系统命令。
+            </button>
+            <button class="quiz-option" data-value="c" onclick="selectOption(this)">
+              C. 先用 `df -h` 确认是哪个挂载点满了，然后立刻 `cd /var`，再用 `du -sh *` 查出是不是 `/var/log` 里的某个日志文件由于疯狂报错失控，把硬盘撑爆了。
+            </button>
+          </div>
+          <div class="quiz-feedback" id="quiz-1-feedback"></div>
+          <button class="btn" style="margin-top:15px;" onclick="checkQuiz()">下达指令</button>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <script>
+    (function() {
+      // 1. 滚动动画
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('visible');
+            observer.unobserve(entry.target);
+          }
+        });
+      }, { rootMargin: '0px 0px -10% 0px', threshold: 0.1 });
+      document.querySelectorAll('.animate-in').forEach(el => observer.observe(el));
+
+      // 2. Tooltip 悬浮字典
+      let activeTooltip = null;
+      function positionTooltip(term, tip) {
+        const rect = term.getBoundingClientRect();
+        const tipWidth = Math.min(320, window.innerWidth * 0.8); 
+        let left = rect.left + rect.width / 2 - tipWidth / 2;
+        left = Math.max(8, Math.min(left, window.innerWidth - tipWidth - 8));
+        
+        tip.style.left = left + 'px';
+        document.body.appendChild(tip);
+        
+        const tipHeight = tip.offsetHeight;
+        if (rect.top - tipHeight - 8 < 0) {
+          tip.style.top = (rect.bottom + 8) + 'px';
+          tip.classList.add('flip');
+        } else {
+          tip.style.top = (rect.top - tipHeight - 8) + 'px';
+          tip.classList.remove('flip');
+        }
+      }
+
+      document.querySelectorAll('.term').forEach(term => {
+        const tip = document.createElement('span');
+        tip.className = 'term-tooltip';
+        tip.textContent = term.dataset.definition;
+
+        const showTip = (e) => {
+          e.stopPropagation();
+          if (activeTooltip && activeTooltip !== tip) {
+            activeTooltip.classList.remove('visible');
+            activeTooltip.remove();
+          }
+          if (!tip.classList.contains('visible')) {
+            positionTooltip(term, tip);
+            requestAnimationFrame(() => tip.classList.add('visible'));
+            activeTooltip = tip;
+            term.classList.add('active');
+          }
+        };
+
+        const hideTip = () => {
+          tip.classList.remove('visible');
+          term.classList.remove('active');
+          setTimeout(() => { if (!tip.classList.contains('visible')) tip.remove(); }, 150);
+          if (activeTooltip === tip) activeTooltip = null;
+        };
+
+        term.addEventListener('mouseenter', showTip);
+        term.addEventListener('mouseleave', hideTip);
+        term.addEventListener('click', (e) => {
+            if(activeTooltip === tip) { hideTip(); } else { showTip(e); }
+        });
+      });
+
+      document.addEventListener('click', () => {
+        if (activeTooltip) {
+          activeTooltip.classList.remove('visible');
+          document.querySelectorAll('.term.active').forEach(t => t.classList.remove('active'));
+          activeTooltip.remove();
+          activeTooltip = null;
+        }
+      });
+
+      // 3. 群聊推演动画
+      let currentChatStep = 1;
+      window.playChatNext = function() {
+        if (currentChatStep > 2) {
+          for(let i=1; i<=2; i++) {
+            const msg = document.getElementById(`msg-${i}`);
+            msg.style.display = 'none';
+            msg.style.opacity = '0';
+            msg.style.transform = 'translateY(10px)';
+          }
+          currentChatStep = 1;
+          document.getElementById('chat-btn').innerText = "▶ 播放政务求助录音";
+          return;
+        }
+        
+        const msg = document.getElementById(`msg-${currentChatStep}`);
+        msg.style.display = 'flex';
+        void msg.offsetWidth;
+        msg.style.transition = 'all 0.4s ease-out';
+        msg.style.opacity = '1';
+        msg.style.transform = 'translateY(0)';
+        
+        currentChatStep++;
+        document.getElementById('chat-btn').innerText = currentChatStep > 2 ? "↺ 重新播放" : `▶ 继续播放`;
+      };
+
+      // 4. 挂载流动画逻辑
+      const flowSteps = [
+        { label: "1. 物理硬盘插上，系统识别为底层硬件 /dev/sdb1。", active: "flow-drive", pktText: "准备就绪", pktFrom: "18%", pktTo: "18%" },
+        { label: "2. 你作为管理员，在城市规划局里划出一块叫 /mnt/data 的新地皮。", active: "flow-admin", pktText: "划地建目录", pktFrom: "48%", pktTo: "75%" },
+        { label: "3. 你下达命令：`mount /dev/sdb1 /mnt/data`！", active: "flow-admin", pktText: "发起挂载", pktFrom: "48%", pktTo: "18%" },
+        { label: "4. 物理硬盘被成功接入到城市的道路网！现在访问 /mnt/data 就能读写这块硬盘了。", active: "flow-mnt", pktText: "连接成功", pktFrom: "18%", pktTo: "75%" }
+      ];
+      let currentFlowStep = 0;
+      
+      window.flowNext = function() {
+        if (currentFlowStep >= flowSteps.length) {
+          currentFlowStep = 0;
+          document.getElementById('flow-btn').innerText = `下一步 (1/4)`;
+          document.getElementById('flow-label').innerText = "点击“下一步”开始操作";
+          document.querySelectorAll('.flow-actor').forEach(el => el.classList.remove('active'));
+          document.getElementById('flow-packet').style.opacity = '0';
+          return;
+        }
+
+        const step = flowSteps[currentFlowStep];
+        document.getElementById('flow-label').innerText = step.label;
+        document.querySelectorAll('.flow-actor').forEach(el => el.classList.remove('active'));
+        document.getElementById(step.active).classList.add('active');
+
+        const pkt = document.getElementById('flow-packet');
+        pkt.innerText = step.pktText;
+        pkt.style.transition = 'none';
+        pkt.style.left = step.pktFrom;
+        pkt.style.opacity = '1';
+        
+        setTimeout(() => {
+          pkt.style.transition = 'all 0.6s ease';
+          pkt.style.left = step.pktTo;
+        }, 50);
+
+        currentFlowStep++;
+        document.getElementById('flow-btn').innerText = currentFlowStep === 4 ? "重新挂载" : `下一步 (${currentFlowStep + 1}/4)`;
+      };
+
+      // 5. 测验逻辑
+      window.selectOption = function(btn) {
+        const container = btn.closest('.quiz-options');
+        container.querySelectorAll('.quiz-option').forEach(opt => opt.classList.remove('selected'));
+        btn.classList.add('selected');
+      };
+
+      window.checkQuiz = function() {
+        const selected = document.querySelector('#quiz-1 .quiz-option.selected');
+        const feedback = document.getElementById('quiz-1-feedback');
+        
+        if (!selected) {
+          feedback.innerHTML = '请先下达指令！';
+          feedback.className = 'quiz-feedback show error';
+          return;
+        }
+
+        const val = selected.getAttribute('data-value');
+        if (val === 'c') {
+          selected.classList.add('correct');
+          feedback.innerHTML = '<strong>极其敏锐的运维直觉！</strong><br>服务器磁盘报警，90% 的概率是因为业务代码报错狂写日志，撑爆了 <code>/var</code> (可变数据区)。用 <code>du -sh *</code> 快速抓出大户并清空日志，是拯救系统于水火的最快方式。';
+          feedback.className = 'quiz-feedback show success';
+        } else if (val === 'a') {
+          selected.classList.add('incorrect');
+          feedback.innerHTML = '<strong>抓错重点了。</strong><br>服务器不是个人电脑，里面通常没什么视频文件。如果是跑业务的服务器，磁盘满绝大多数是因为程序日志失控，去 <code>/home</code> 删东西往往是杯水车薪。';
+          feedback.className = 'quiz-feedback show error';
+        } else if (val === 'b') {
+          selected.classList.add('incorrect');
+          feedback.innerHTML = '<strong>系统崩溃警告！</strong><br><code>/bin</code> 里的命令是城市运转的基础设施（比如 <code>ls</code>, <code>rm</code>, <code>bash</code>）。删掉它们不仅腾不出多少空间，还会直接让你的系统彻底瘫痪无法操作！';
+          feedback.className = 'quiz-feedback show error';
+        }
+        
+        document.querySelectorAll('#quiz-1 .quiz-option').forEach(btn => btn.style.pointerEvents = 'none');
+      };
+
+    })();
+  </script>
+</body>
+</html>

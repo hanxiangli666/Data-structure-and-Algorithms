@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Linux 管道的坑：城市水务工程师的排雷指南</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400;1,9..40,500&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  
+  <style>
+    /* === 核心设计系统 === */
+    :root {
+      /* 水务系统的清透色彩基调 */
+      --color-bg:             #F0F8FF; /* Alice Blue */
+      --color-bg-warm:        #E6F2FA;
+      --color-bg-code:        #0B192C; /* 深海幽蓝 */
+      --color-text:           #1E293B;
+      --color-text-secondary: #475569;
+      --color-text-muted:     #94A3B8;
+      --color-border:         #CBD5E1;
+      --color-surface:        #FFFFFF;
+      --color-surface-warm:   #F8FAFC;
+      
+      /* 水流蓝主题色 (Aqueduct Blue) */
+      --color-accent:         #0284C7; 
+      --color-accent-hover:   #0369A1;
+      --color-accent-light:   #E0F2FE;
+      --color-accent-muted:   #7DD3FC;
+      
+      --color-success:        #059669;
+      --color-success-light:  #D1FAE5;
+      --color-error:          #DC2626;
+      --color-error-light:    #FEE2E2;
+
+      /* 角色颜色 */
+      --color-actor-1:        #0284C7; /* 管道调度总署 (Shell) */
+      --color-actor-2:        #059669; /* 抽水泵 (Command) */
+      --color-actor-3:        #D97706; /* 蓄水池 (File) */
+
+      --font-display:  'Bricolage Grotesque', sans-serif;
+      --font-body:     'DM Sans', -apple-system, sans-serif;
+      --font-mono:     'JetBrains Mono', monospace;
+
+      --text-xs: 0.75rem; --text-sm: 0.875rem; --text-base: 1rem;
+      --text-lg: 1.125rem; --text-xl: 1.25rem; --text-2xl: 1.5rem;
+      --text-4xl: 2.25rem; --text-6xl: 3.75rem;
+
+      --space-2: 0.5rem; --space-3: 0.75rem; --space-4: 1rem; 
+      --space-6: 1.5rem; --space-8: 2rem; --space-12: 3rem; --space-16: 4rem;
+
+      --content-width: 800px;
+      --radius-sm: 8px; --radius-md: 12px;
+      --shadow-sm: 0 1px 2px rgba(2, 132, 199, 0.05);
+      --shadow-md: 0 4px 12px rgba(2, 132, 199, 0.08);
+      --shadow-lg: 0 8px 24px rgba(2, 132, 199, 0.1);
+      
+      --duration-fast: 150ms; --duration-normal: 300ms; --duration-slow: 500ms;
+    }
+
+    body { margin: 0; font-family: var(--font-body); color: var(--color-text); background: var(--color-bg); line-height: 1.6; background-image: radial-gradient(ellipse at 20% 50%, rgba(2, 132, 199, 0.05) 0%, transparent 50%); }
+    h1, h2, h3 { font-family: var(--font-display); line-height: 1.15; }
+    p { font-size: var(--text-lg); }
+    cite { font-size: 0.75em; color: var(--color-text-muted); font-style: normal; user-select: none; }
+
+    /* === 模块布局 === */
+    .module { min-height: 100vh; padding: var(--space-16) var(--space-6); border-bottom: 1px solid var(--color-border); }
+    .module:nth-child(even) { background: var(--color-bg-warm); }
+    .module-content { max-width: var(--content-width); margin: 0 auto; }
+    .module-number { font-size: var(--text-6xl); font-weight: 800; color: var(--color-accent); opacity: 0.15; display: block; margin-bottom: -20px; }
+    .module-title { font-size: var(--text-4xl); font-weight: 700; margin: 0 0 var(--space-2) 0; }
+    .module-subtitle { font-size: var(--text-xl); color: var(--color-text-secondary); margin-bottom: var(--space-12); }
+
+    /* === 交互词汇表 === */
+    .term { border-bottom: 2px dashed var(--color-accent-muted); cursor: pointer; position: relative; font-weight: 600; color: var(--color-accent); transition: all 0.2s; }
+    .term:hover, .term.active { border-bottom-color: var(--color-accent); color: var(--color-accent-hover); }
+    .term-tooltip { position: fixed; background: var(--color-bg-code); color: #E2E8F0; padding: var(--space-3) var(--space-4); border-radius: var(--radius-sm); font-size: var(--text-sm); font-family: var(--font-body); width: max(200px, min(320px, 80vw)); box-shadow: var(--shadow-lg); pointer-events: none; opacity: 0; transition: opacity var(--duration-fast); z-index: 10000; }
+    .term-tooltip::after { content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%); border: 6px solid transparent; border-top-color: var(--color-bg-code); }
+    .term-tooltip.visible { opacity: 1; }
+    .term-tooltip.flip { bottom: auto; top: calc(100% + 8px); }
+    .term-tooltip.flip::after { top: auto; bottom: 100%; border-top-color: transparent; border-bottom-color: var(--color-bg-code); }
+
+    /* === 卡片与 Callout === */
+    .callout { display: flex; gap: var(--space-4); padding: var(--space-4); background: var(--color-accent-light); border-left: 4px solid var(--color-accent); border-radius: 0 var(--radius-md) var(--radius-md) 0; margin: var(--space-6) 0; }
+    .callout-title { display: block; font-family: var(--font-display); font-size: var(--text-xl); margin-bottom: var(--space-2); color: var(--color-accent-hover);}
+    
+    .arch-cards { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-6); margin: var(--space-8) 0; }
+    .arch-card { background: var(--color-surface); padding: var(--space-6); border-radius: var(--radius-md); box-shadow: var(--shadow-sm); border-top: 4px solid var(--color-text-muted); }
+    .arch-card.highlight { border-top-color: var(--color-accent); box-shadow: var(--shadow-md); }
+
+    /* === 代码翻译块 === */
+    .translation-block { display: grid; grid-template-columns: 1fr 1fr; border-radius: var(--radius-md); overflow: hidden; box-shadow: var(--shadow-md); margin: var(--space-8) 0; }
+    .translation-code { background: var(--color-bg-code); color: #E2E8F0; padding: var(--space-6); font-family: var(--font-mono); font-size: var(--text-sm); position: relative; overflow-x: hidden;}
+    .translation-code pre { white-space: pre-wrap; word-break: break-word; margin: 0; padding-top: var(--space-6);}
+    .translation-english { background: var(--color-surface-warm); padding: var(--space-6); font-size: var(--text-sm); border-left: 3px solid var(--color-accent); position: relative; }
+    .translation-label { position: absolute; top: var(--space-2); right: var(--space-3); font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.1em; opacity: 0.5; }
+    .tl { margin-top: 22px; margin-bottom: 0; color: var(--color-text); }
+    .c-key { color: #CBA6F7; } .c-str { color: #A6E3A1; } .c-num { color: #FAB387; } .c-cmd { color: #89B4FA; } .c-arg { color: #94E2D5; }
+
+    /* === 群聊动画 === */
+    .chat-window { background: var(--color-bg-warm); border-radius: var(--radius-md); padding: var(--space-4); margin: var(--space-8) 0; border: 1px solid var(--color-border); }
+    .chat-message { display: flex; gap: var(--space-3); margin-bottom: var(--space-4); opacity: 0; transform: translateY(10px); }
+    .chat-avatar { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; flex-shrink: 0; font-size: 1.2rem; }
+    .chat-bubble { background: var(--color-surface); padding: var(--space-3) var(--space-4); border-radius: 0 var(--radius-md) var(--radius-md) var(--radius-md); box-shadow: var(--shadow-sm); max-width: 80%; }
+    .chat-sender { font-size: var(--text-xs); font-weight: bold; margin-bottom: 2px; display: block; }
+    
+    /* === 数据流动画 === */
+    .flow-animation { background: var(--color-surface); padding: var(--space-6); border-radius: var(--radius-md); box-shadow: var(--shadow-md); margin: var(--space-8) 0; text-align: center; }
+    .flow-actors { display: flex; justify-content: space-between; margin-bottom: var(--space-8); position: relative; padding: 0 20px;}
+    .flow-actor { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); z-index: 2; width: 22%; }
+    .flow-actor-icon { width: 60px; height: 60px; border-radius: 50%; background: var(--color-bg-warm); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; border: 2px solid var(--color-border); transition: all 0.3s ease; }
+    .flow-actor.active .flow-actor-icon { border-color: var(--color-accent); box-shadow: 0 0 0 4px var(--color-accent-light); transform: scale(1.1); }
+    .flow-packet { position: absolute; width: 60px; height: 26px; background: var(--color-accent); color: white; border-radius: var(--radius-sm); top: 18px; left: 15%; opacity: 0; transition: all 0.6s ease; z-index: 1; font-size: 11px; display: flex; align-items: center; justify-content: center; font-weight: bold;}
+    .flow-label { font-size: var(--text-lg); font-weight: 600; min-height: 4rem; margin-bottom: var(--space-4); }
+
+    /* === 测验 === */
+    .quiz-container { background: var(--color-surface); padding: var(--space-6); border-radius: var(--radius-md); box-shadow: var(--shadow-md); margin: var(--space-8) 0; }
+    .quiz-option { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-4); border: 2px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-surface); cursor: pointer; text-align: left; font-size: var(--text-base); transition: all 0.2s; margin-bottom: 10px; width: 100%; box-sizing: border-box;}
+    .quiz-option:hover { border-color: var(--color-accent-muted); }
+    .quiz-option.selected { border-color: var(--color-accent); background: var(--color-accent-light); }
+    .quiz-option.correct { border-color: var(--color-success); background: var(--color-success-light); }
+    .quiz-option.incorrect { border-color: var(--color-error); background: var(--color-error-light); }
+    .quiz-feedback { max-height: 0; overflow: hidden; opacity: 0; transition: all 0.3s; }
+    .quiz-feedback.show { max-height: 300px; opacity: 1; padding: var(--space-4); margin-top: var(--space-3); border-radius: var(--radius-sm); }
+    .quiz-feedback.success { background: var(--color-success-light); color: var(--color-success); border-left: 4px solid var(--color-success); }
+    .quiz-feedback.error { background: var(--color-error-light); color: var(--color-error); border-left: 4px solid var(--color-error); }
+
+    .btn { background: var(--color-accent); color: white; border: none; padding: var(--space-2) var(--space-4); border-radius: var(--radius-sm); cursor: pointer; font-size: var(--text-base); font-weight: bold; transition: all 0.2s; }
+    .btn:hover { background: var(--color-accent-hover); }
+    
+    .animate-in { opacity: 0; transform: translateY(20px); transition: all var(--duration-slow) ease-out; }
+    .animate-in.visible { opacity: 1; transform: translateY(0); }
+  </style>
+</head>
+<body>
+
+  <section class="module">
+    <div class="module-content">
+      <header class="module-header animate-in">
+        <span class="module-number">01</span>
+        <h1 class="module-title">管道调度总署的秘密</h1>
+        <p class="module-subtitle">谁在真正控制水的流向？</p>
+      </header>
+
+      <div class="module-body animate-in">
+        <p>在 Linux 这座由数据流驱动的城市里，文件是**蓄水池**，命令是抽水的**水泵**，而重定向符（<code>></code>, <code>>></code>）和管道符（<code>|</code>）则是连接它们的**物理水管** <cite></cite>。</p>
+        
+        <p>这里有一个让无数新手翻车的致命错觉：**水泵（命令）以为是自己在接水管，但其实水管早就被调度总署（Shell）提前接好了** <cite></cite>。</p>
+
+        <div class="callout">
+          <div class="callout-icon">💡</div>
+          <div class="callout-content">
+            <strong class="callout-title">水泵是盲目的</strong>
+            <p style="margin-bottom:0">当你敲下命令时，是 <strong><span class="term" data-definition="操作系统的命令解释器，如 Bash 或 Zsh。它负责解析你的命令，并在真正启动程序前，提前把输入输出的环境准备好。">Shell</span></strong> 负责处理这些重定向符号。程序（水泵）本身根本不知道自己的进水口和出水口到底指向了哪里 <cite></cite>。它只管傻乎乎地抽水和排水。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="module">
+    <div class="module-content">
+      <header class="module-header animate-in">
+        <span class="module-number">02</span>
+        <h1 class="module-title">瞬间抽干的蓄水池</h1>
+        <p class="module-subtitle">为什么 `cat file > file` 会清空文件？</p>
+      </header>
+
+      <div class="module-body animate-in">
+        <p>如果你想把一个蓄水池（文件）里的水抽出来，过滤一下，再倒回同一个池子里。你的直觉写法可能是：<code>cat file.txt > file.txt</code> <cite></cite>。</p>
+        
+        <p>你以为这毫无影响，但按回车后，**你的文件瞬间变成 0 字节，数据全毁了！** <cite></cite></p>
+
+        <div class="chat-window">
+          <div id="chat-messages">
+            <div class="chat-message" id="msg-1" style="display:none;">
+              <div class="chat-avatar" style="background: var(--color-actor-1)">👷</div>
+              <div class="chat-bubble">
+                <span class="chat-sender" style="color: var(--color-actor-1)">管道调度局 (Shell)</span>
+                <p>收到指令 <code>cat file.txt > file.txt</code>。我看到了重定向符 <code>></code>！规则规定：一旦看到 <code>></code>，我要在启动水泵之前，先把目标蓄水池**立刻排空（清空文件）**，准备接新水 <cite></cite>。</p>
+              </div>
+            </div>
+            <div class="chat-message" id="msg-2" style="display:none;">
+              <div class="chat-avatar" style="background: var(--color-actor-1)">👷</div>
+              <div class="chat-bubble">
+                <span class="chat-sender" style="color: var(--color-actor-1)">管道调度局 (Shell)</span>
+                <p>好了，水池已经抽干见底了。喂，cat 水泵，你可以启动了！ <cite></cite></p>
+              </div>
+            </div>
+            <div class="chat-message" id="msg-3" style="display:none;">
+              <div class="chat-avatar" style="background: var(--color-actor-2)">⚙️</div>
+              <div class="chat-bubble">
+                <span class="chat-sender" style="color: var(--color-actor-2)">水泵 (cat 命令)</span>
+                <p>轰隆隆... 开始读取 <code>file.txt</code>... 咦？怎么是空的？不管了，把空水流喷向我的出口吧！ <cite></cite></p>
+              </div>
+            </div>
+            <div class="chat-message" id="msg-4" style="display:none;">
+              <div class="chat-avatar" style="background: var(--color-error)">💥</div>
+              <div class="chat-bubble">
+                <span class="chat-sender" style="color: var(--color-error)">结果</span>
+                <p>文件被彻底清空，原来的数据永远找不回来了 <cite></cite>。</p>
+              </div>
+            </div>
+          </div>
+          <button class="btn" style="margin-top:10px;" onclick="playChatNext()" id="chat-btn">▶ 播放事故调查录音</button>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <section class="module">
+    <div class="module-content">
+      <header class="module-header animate-in">
+        <span class="module-number">03</span>
+        <h1 class="module-title">死循环与并行水泵</h1>
+        <p class="module-subtitle">追加 (>>) 和 管道 (|) 带来的致命竞争。</p>
+      </header>
+
+      <div class="module-body animate-in">
+        <p>既然 <code>></code> 会清空水池，那换成 <strong><span class="term" data-definition="追加重定向符。不清空目标文件，而是将命令的输出接在原有内容的末尾。">追加写入 (>>)</span></strong> 会怎样？如果你执行 <code>cat file.txt >> file.txt</code> <cite></cite>。</p>
+        <p>结果是**死循环！**水泵一边从池子里抽水，一边往同一个池子里倒水。池子里的水永远抽不完，文件体积疯狂膨胀，直到撑爆整个城市的硬盘，你只能用 <code>Ctrl+C</code> 强行拉闸停机 <cite></cite>。</p>
+
+        <h3 style="margin-top: 40px;">另一个误区：管道并不是接力赛</h3>
+        <p>当你写下 <code>cat file.txt | head -n 2 > file.txt</code> 时，你以为水泵 <code>cat</code> 会先把活干完，再把水传给 <code>head</code>。这是错的！</p>
+        
+        <p><strong><span class="term" data-definition="管道符。用于将前一个命令的标准输出（stdout）直接作为后一个命令的标准输入（stdin）。这两个命令是由 Shell 并发启动的。">管道 (|) </span>连接的多个水泵，是同时开机的！</strong> <cite></cite></p>
+
+        <div class="flow-animation">
+          <h3 style="margin-top:0;">管道并行的灾难现场</h3>
+          <div class="flow-label" id="flow-label">点击“下一步”演示并发启动</div>
+          
+          <div class="flow-actors">
+            <div class="flow-actor" id="flow-cat">
+              <div class="flow-actor-icon" style="font-size: 1.5rem; border-color: var(--color-actor-2)">⚙️</div>
+              <span style="font-size: 0.85em; font-weight:bold; color: var(--color-actor-2)">水泵 1 (cat)</span>
+            </div>
+            <div class="flow-packet" id="flow-packet"></div>
+            <div class="flow-actor" id="flow-head">
+              <div class="flow-actor-icon" style="font-size: 1.5rem; border-color: var(--color-actor-3)">⚙️</div>
+              <span style="font-size: 0.85em; font-weight:bold; color: var(--color-actor-3)">水泵 2 (head)</span>
+            </div>
+            <div class="flow-actor" id="flow-file">
+              <div class="flow-actor-icon" style="font-size: 1.5rem; border-color: var(--color-error)">💧</div>
+              <span style="font-size: 0.85em; font-weight:bold; color: var(--color-error)">目标池 (file.txt)</span>
+            </div>
+          </div>
+
+          <button class="btn" onclick="flowNext()" id="flow-btn">下一步 (1/4)</button>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <section class="module">
+    <div class="module-content">
+      <header class="module-header animate-in">
+        <span class="module-number">04</span>
+        <h1 class="module-title">破局法宝：海绵与三通管</h1>
+        <p class="module-subtitle">如何优雅地解决同源读写的冲突？</p>
+      </header>
+
+      <div class="module-body animate-in">
+        <p>为了遵守“**绝不同时对同一个文件读写**”的黄金法则 <cite></cite>，水务局引进了两件超级神器。</p>
+
+        <div class="arch-cards">
+          <div class="arch-card">
+            <h3 style="margin-top: 0; color: var(--color-accent);">海绵缓冲区 (sponge)</h3>
+            <p><strong><span class="term" data-definition="moreutils 包中的命令。它会先缓存所有的标准输入，直到输入流结束（EOF），然后再一次性打开并写入目标文件。">sponge</span></strong> 就像一个巨大的海绵储水罐。它接在管道末端，会把上游来的水**全部吸干缓存在自己肚子里**。直到上游彻底停水了，它才会转身打开目标蓄水池的盖子，把水挤进去 <cite></cite>。</p>
+          </div>
+          <div class="arch-card">
+            <h3 style="margin-top: 0">观察三通管 (tee)</h3>
+            <p><strong><span class="term" data-definition="一个命令行工具。它从标准输入读取数据，然后同时将这些数据输出到标准输出（屏幕）和一个或多个指定的文件中。">tee</span></strong> 就像一个透明的 Y 型三通水管。水流经过它时，一半继续往前流（比如流向屏幕让你实时观察），另一半流向旁边的蓄水池（留下日志归档） <cite></cite>。</p>
+          </div>
+        </div>
+
+        <div class="translation-block">
+          <div class="translation-code">
+            <span class="translation-label">优雅的处理方案</span>
+            <pre><code><span class="code-comment"># 方案 1：使用临时水池中转，然后再覆盖</span>
+<span class="c-cmd">cat</span> file.txt | <span class="c-cmd">head</span> <span class="c-arg">-n 2</span> > temp.txt <span class="c-arg">&&</span> <span class="c-cmd">mv</span> temp.txt file.txt
+
+<span class="code-comment"># 方案 2：使用巨型海绵 (需要安装 moreutils)</span>
+<span class="c-cmd">cat</span> file.txt | <span class="c-cmd">head</span> <span class="c-arg">-n 2</span> | <span class="c-cmd">sponge</span> file.txt</code></pre>
+          </div>
+          <div class="translation-english">
+            <span class="translation-label">大白话翻译</span>
+            <div class="translation-lines">
+              <p class="tl" style="margin-top: 5px;">先把结果抽进一个新的安全备用池 <code>temp.txt</code> 中。等所有操作确认成功后，再把备用池里的水倒回主池里覆盖掉 <cite></cite>。</p>
+              <br><br>
+              <p class="tl" style="margin-top: 15px;">更优雅的做法：让 <code>sponge</code> 吸满所有的处理结果，等前面所有的抽水机都停工了，它再安全地把水一次性挤进 <code>file.txt</code> 里 <cite></cite>。</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <section class="module">
+    <div class="module-content">
+      <header class="module-header animate-in">
+        <span class="module-number">05</span>
+        <h1 class="module-title">污水与净水的汇流</h1>
+        <p class="module-subtitle">读懂 2>&1：方向与时机决定一切。</p>
+      </header>
+
+      <div class="module-body animate-in">
+        <p>在 Linux 管道系统中，每个水泵默认都有两个出水口：<br>
+        <strong>1 号口（<span class="term" data-definition="Standard Output。文件描述符为 1。程序正常执行产生的输出信息。默认指向终端屏幕。">标准输出 stdout</span>）：</strong>流出清澈的净水（正常数据）。<br>
+        <strong>2 号口（<span class="term" data-definition="Standard Error。文件描述符为 2。程序执行过程中产生的错误和警告信息。默认也指向终端屏幕，以区别于正常的输出流。">标准错误 stderr</span>）：</strong>流出浑浊的污水（报错信息）。</p>
+        
+        <p>有时候我们需要把污水也合并进净水管道里一起处理，这就是 <code>2>&1</code> 的作用。但管道的连接是有**严格顺序（从左到右生效）**的 <cite></cite>！</p>
+
+        <div class="translation-block">
+          <div class="translation-code">
+            <span class="translation-label">顺序导致的结果差异</span>
+            <pre><code><span class="code-comment"># 正确的汇流：先接主管道，再并线</span>
+$ <span class="c-cmd">command</span> > output.txt <span class="c-arg">2>&1</span>
+
+
+<span class="code-comment"># 错误的汇流：提前并线，导致错位</span>
+$ <span class="c-cmd">command</span> <span class="c-arg">2>&1</span> > output.txt</code></pre>
+          </div>
+          <div class="translation-english">
+            <span class="translation-label">大白话翻译</span>
+            <div class="translation-lines">
+              <p class="tl" style="margin-top: 15px;">**步骤 1：** 先把 1号口（净水）拔下来，接到 <code>output.txt</code> 蓄水池里。<br>
+              **步骤 2：** 让 2号口（污水）顺着**此时此刻 1号口的去向**接过去。于是污水也流进了 <code>output.txt</code> <cite></cite>。</p>
+              <br>
+              <p class="tl" style="margin-top: 35px;">**步骤 1：** <code>2>&1</code> 先执行。此时 1号口还指着屏幕，所以污水直接泼向了屏幕。<br>
+              **步骤 2：** 然后 <code>> output.txt</code> 执行，把 1号口改道去了文件。结果净水进了文件，污水留在了屏幕上 <cite></cite>！</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <section class="module">
+    <div class="module-content">
+      <header class="module-header animate-in">
+        <span class="module-number">06</span>
+        <h1 class="module-title">首席水务工程师测验</h1>
+        <p class="module-subtitle">面对实际管网事故，你该如何决策？</p>
+      </header>
+
+      <div class="module-body animate-in">
+        
+        <div class="quiz-container" id="quiz-1">
+          <h3>实战事故：你需要从系统中找出所有名字里带 ".log" 的过期日志文件，并把它们删掉。但由于文件成千上万，如果直接用 `rm $(find . -name "*.log")`，水务局系统会立刻崩溃报错："Argument list too long"（你要接的水管太多了）。为了分批安全地处理这些文件，你应该加上什么过滤阀门？</h3>
+          <div class="quiz-options">
+            <button class="quiz-option" data-value="a" onclick="selectOption(this)">
+              A. 使用 `sponge`，让它先把所有的日志文件名都吸干，再一次性全部喂给 rm。
+            </button>
+            <button class="quiz-option" data-value="b" onclick="selectOption(this)">
+              B. 使用 `find . -name "*.log" | xargs rm`，让 xargs 把水流切分成一小批一小批的参数喂给 rm 水泵。
+            </button>
+            <button class="quiz-option" data-value="c" onclick="selectOption(this)">
+              C. 使用 `find . -name "*.log" > /dev/null 2>&1`，把日志全部抽进系统黑洞里销毁。
+            </button>
+          </div>
+          <div class="quiz-feedback" id="quiz-1-feedback"></div>
+          <button class="btn" style="margin-top:15px;" onclick="checkQuiz()">下达指令</button>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <script>
+    (function() {
+      // 1. 滚动动画
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('visible');
+            observer.unobserve(entry.target);
+          }
+        });
+      }, { rootMargin: '0px 0px -10% 0px', threshold: 0.1 });
+      document.querySelectorAll('.animate-in').forEach(el => observer.observe(el));
+
+      // 2. Tooltip 悬浮字典
+      let activeTooltip = null;
+      function positionTooltip(term, tip) {
+        const rect = term.getBoundingClientRect();
+        const tipWidth = Math.min(320, window.innerWidth * 0.8); 
+        let left = rect.left + rect.width / 2 - tipWidth / 2;
+        left = Math.max(8, Math.min(left, window.innerWidth - tipWidth - 8));
+        
+        tip.style.left = left + 'px';
+        document.body.appendChild(tip);
+        
+        const tipHeight = tip.offsetHeight;
+        if (rect.top - tipHeight - 8 < 0) {
+          tip.style.top = (rect.bottom + 8) + 'px';
+          tip.classList.add('flip');
+        } else {
+          tip.style.top = (rect.top - tipHeight - 8) + 'px';
+          tip.classList.remove('flip');
+        }
+      }
+
+      document.querySelectorAll('.term').forEach(term => {
+        const tip = document.createElement('span');
+        tip.className = 'term-tooltip';
+        tip.textContent = term.dataset.definition;
+
+        const showTip = (e) => {
+          e.stopPropagation();
+          if (activeTooltip && activeTooltip !== tip) {
+            activeTooltip.classList.remove('visible');
+            activeTooltip.remove();
+          }
+          if (!tip.classList.contains('visible')) {
+            positionTooltip(term, tip);
+            requestAnimationFrame(() => tip.classList.add('visible'));
+            activeTooltip = tip;
+            term.classList.add('active');
+          }
+        };
+
+        const hideTip = () => {
+          tip.classList.remove('visible');
+          term.classList.remove('active');
+          setTimeout(() => { if (!tip.classList.contains('visible')) tip.remove(); }, 150);
+          if (activeTooltip === tip) activeTooltip = null;
+        };
+
+        term.addEventListener('mouseenter', showTip);
+        term.addEventListener('mouseleave', hideTip);
+        term.addEventListener('click', (e) => {
+            if(activeTooltip === tip) { hideTip(); } else { showTip(e); }
+        });
+      });
+
+      document.addEventListener('click', () => {
+        if (activeTooltip) {
+          activeTooltip.classList.remove('visible');
+          document.querySelectorAll('.term.active').forEach(t => t.classList.remove('active'));
+          activeTooltip.remove();
+          activeTooltip = null;
+        }
+      });
+
+      // 3. 群聊推演动画
+      let currentChatStep = 1;
+      window.playChatNext = function() {
+        if (currentChatStep > 4) {
+          for(let i=1; i<=4; i++) {
+            const msg = document.getElementById(`msg-${i}`);
+            msg.style.display = 'none';
+            msg.style.opacity = '0';
+            msg.style.transform = 'translateY(10px)';
+          }
+          currentChatStep = 1;
+          document.getElementById('chat-btn').innerText = "▶ 播放事故调查录音";
+          return;
+        }
+        
+        const msg = document.getElementById(`msg-${currentChatStep}`);
+        msg.style.display = 'flex';
+        void msg.offsetWidth;
+        msg.style.transition = 'all 0.4s ease-out';
+        msg.style.opacity = '1';
+        msg.style.transform = 'translateY(0)';
+        
+        currentChatStep++;
+        document.getElementById('chat-btn').innerText = currentChatStep > 4 ? "↺ 重新播放" : `▶ 继续播放 (${currentChatStep-1}/4)`;
+      };
+
+      // 4. 并行管网流动画逻辑
+      const flowSteps = [
+        { label: "1. 指令下达：cat | head > file。Shell 开始动作：先把蓄水池彻底清空！", active: "flow-file", pktText: "被清空!", pktFrom: "75%", pktTo: "75%", evil: true },
+        { label: "2. 接着，Shell 同时接通了两个水泵 (cat 和 head) 的电源。注意：是同时！", active: "flow-cat", pktText: "同时启动", pktFrom: "18%", pktTo: "46%", evil: false },
+        { label: "3. 糟糕的概率发生了：head 水泵动作极快，抢先连上了空空如也的水池。", active: "flow-head", pktText: "连接空池", pktFrom: "46%", pktTo: "75%", evil: true },
+        { label: "4. cat 水泵这才反应过来，去抽原本有水的文件...但此时文件已经被 Shell 提前排空了！什么也抽不到！", active: "flow-cat", pktText: "无水可抽", pktFrom: "18%", pktTo: "46%", evil: true }
+      ];
+      let currentFlowStep = 0;
+      
+      window.flowNext = function() {
+        if (currentFlowStep >= flowSteps.length) {
+          currentFlowStep = 0;
+          document.getElementById('flow-btn').innerText = `下一步 (1/4)`;
+          document.getElementById('flow-label').innerText = "点击“下一步”演示并发启动";
+          document.querySelectorAll('.flow-actor').forEach(el => el.classList.remove('active'));
+          document.getElementById('flow-packet').style.opacity = '0';
+          document.getElementById('flow-packet').style.background = 'var(--color-accent)';
+          return;
+        }
+
+        const step = flowSteps[currentFlowStep];
+        document.getElementById('flow-label').innerText = step.label;
+        document.querySelectorAll('.flow-actor').forEach(el => el.classList.remove('active'));
+        document.getElementById(step.active).classList.add('active');
+
+        const pkt = document.getElementById('flow-packet');
+        pkt.innerText = step.pktText;
+        if(step.evil) { pkt.style.background = 'var(--color-error)'; } else { pkt.style.background = 'var(--color-accent)'; }
+        
+        pkt.style.transition = 'none';
+        pkt.style.left = step.pktFrom;
+        pkt.style.opacity = '1';
+        
+        setTimeout(() => {
+          pkt.style.transition = 'all 0.6s ease';
+          pkt.style.left = step.pktTo;
+        }, 50);
+
+        currentFlowStep++;
+        document.getElementById('flow-btn').innerText = currentFlowStep === 4 ? "重新推演" : `下一步 (${currentFlowStep + 1}/4)`;
+      };
+
+      // 5. 测验逻辑
+      window.selectOption = function(btn) {
+        const container = btn.closest('.quiz-options');
+        container.querySelectorAll('.quiz-option').forEach(opt => opt.classList.remove('selected'));
+        btn.classList.add('selected');
+      };
+
+      window.checkQuiz = function() {
+        const selected = document.querySelector('#quiz-1 .quiz-option.selected');
+        const feedback = document.getElementById('quiz-1-feedback');
+        
+        if (!selected) {
+          feedback.innerHTML = '请先下达指令！';
+          feedback.className = 'quiz-feedback show error';
+          return;
+        }
+
+        const val = selected.getAttribute('data-value');
+        if (val === 'b') {
+          selected.classList.add('correct');
+          feedback.innerHTML = '<strong>完美的引流策略！</strong><br><strong><span class="term">xargs</span></strong> 的作用就是把管道传来的长长水流（标准输入），转换成离散的水管配件（命令参数）喂给后续命令 <cite></cite>。它非常智能，如果发现参数太多，它会自动分批次（比如每 1000 个执行一次 rm），完美避开 "Argument list too long" 崩溃。';
+          feedback.className = 'quiz-feedback show success';
+        } else if (val === 'a') {
+          selected.classList.add('incorrect');
+          feedback.innerHTML = '<strong>南辕北辙了。</strong><br><code>sponge</code> 的作用是暂存数据并“覆盖写入”到某个文件里，避免同源读写冲突 <cite></cite>。它并不能把管道流转化为命令行参数，也无法帮你执行 rm 命令。';
+          feedback.className = 'quiz-feedback show error';
+        } else if (val === 'c') {
+          selected.classList.add('incorrect');
+          feedback.innerHTML = '<strong>毫无作用的操作。</strong><br>这只是把 find 命令搜出来的“文字清单”丢进了黑洞，但你根本没有调用 <code>rm</code> 命令，硬盘上真正的日志文件一个都没有被删掉！';
+          feedback.className = 'quiz-feedback show error';
+        }
+        
+        document.querySelectorAll('#quiz-1 .quiz-option').forEach(btn => btn.style.pointerEvents = 'none');
+      };
+
+    })();
+  </script>
+</body>
+</html>

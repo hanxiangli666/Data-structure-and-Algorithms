@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LSM 树设计原理：极速物流枢纽的运转法则</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400;1,9..40,500&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  
+  <style>
+    /* === 核心设计系统 === */
+    :root {
+      /* 物流枢纽的纸箱与工业灰 */
+      --color-bg:             #FAF9F6; /* 极浅的暖灰/纸箱色 */
+      --color-bg-warm:        #F4F1EA;
+      --color-bg-code:        #1E293B; /* 蓝灰暗色，控制台面板 */
+      --color-text:           #292524;
+      --color-text-secondary: #57534E;
+      --color-text-muted:     #A8A29E;
+      --color-border:         #E7E5E4;
+      --color-surface:        #FFFFFF;
+      --color-surface-warm:   #FAF8F5;
+      
+      /* 物流高亮警示橙 (Logistics Orange) */
+      --color-accent:         #EA580C; 
+      --color-accent-hover:   #C2410C;
+      --color-accent-light:   #FFEDD5;
+      --color-accent-muted:   #FDBA74;
+      
+      --color-success:        #059669;
+      --color-success-light:  #D1FAE5;
+      --color-error:          #DC2626;
+      --color-error-light:    #FEE2E2;
+
+      /* 角色颜色 */
+      --color-actor-1:        #EA580C; /* 分拣中心前台 (Memtable) */
+      --color-actor-2:        #2563EB; /* 夜班整理工 (Compaction) */
+      --color-actor-3:        #059669; /* 智能扫描仪 (Bloom Filter) */
+
+      --font-display:  'Bricolage Grotesque', sans-serif;
+      --font-body:     'DM Sans', -apple-system, sans-serif;
+      --font-mono:     'JetBrains Mono', monospace;
+
+      --text-xs: 0.75rem; --text-sm: 0.875rem; --text-base: 1rem;
+      --text-lg: 1.125rem; --text-xl: 1.25rem; --text-2xl: 1.5rem;
+      --text-4xl: 2.25rem; --text-6xl: 3.75rem;
+
+      --space-2: 0.5rem; --space-3: 0.75rem; --space-4: 1rem; 
+      --space-6: 1.5rem; --space-8: 2rem; --space-12: 3rem; --space-16: 4rem;
+
+      --content-width: 800px;
+      --radius-sm: 8px; --radius-md: 12px;
+      --shadow-sm: 0 1px 2px rgba(41, 37, 36, 0.05);
+      --shadow-md: 0 4px 12px rgba(41, 37, 36, 0.08);
+      --shadow-lg: 0 8px 24px rgba(41, 37, 36, 0.1);
+      
+      --duration-fast: 150ms; --duration-normal: 300ms; --duration-slow: 500ms;
+    }
+
+    body { margin: 0; font-family: var(--font-body); color: var(--color-text); background: var(--color-bg); line-height: 1.6; background-image: radial-gradient(ellipse at 20% 50%, rgba(234, 88, 12, 0.03) 0%, transparent 50%); }
+    h1, h2, h3 { font-family: var(--font-display); line-height: 1.15; }
+    p { font-size: var(--text-lg); }
+    cite { font-size: 0.75em; color: var(--color-text-muted); font-style: normal; user-select: none; }
+
+    /* === 模块布局 === */
+    .module { min-height: 100vh; padding: var(--space-16) var(--space-6); border-bottom: 1px solid var(--color-border); }
+    .module:nth-child(even) { background: var(--color-bg-warm); }
+    .module-content { max-width: var(--content-width); margin: 0 auto; }
+    .module-number { font-size: var(--text-6xl); font-weight: 800; color: var(--color-accent); opacity: 0.15; display: block; margin-bottom: -20px; }
+    .module-title { font-size: var(--text-4xl); font-weight: 700; margin: 0 0 var(--space-2) 0; }
+    .module-subtitle { font-size: var(--text-xl); color: var(--color-text-secondary); margin-bottom: var(--space-12); }
+
+    /* === 交互词汇表 === */
+    .term { border-bottom: 2px dashed var(--color-accent-muted); cursor: pointer; position: relative; font-weight: 600; color: var(--color-accent); transition: all 0.2s; }
+    .term:hover, .term.active { border-bottom-color: var(--color-accent); color: var(--color-accent-hover); }
+    .term-tooltip { position: fixed; background: var(--color-bg-code); color: #F8FAFC; padding: var(--space-3) var(--space-4); border-radius: var(--radius-sm); font-size: var(--text-sm); font-family: var(--font-body); width: max(200px, min(320px, 80vw)); box-shadow: var(--shadow-lg); pointer-events: none; opacity: 0; transition: opacity var(--duration-fast); z-index: 10000; }
+    .term-tooltip::after { content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%); border: 6px solid transparent; border-top-color: var(--color-bg-code); }
+    .term-tooltip.visible { opacity: 1; }
+    .term-tooltip.flip { bottom: auto; top: calc(100% + 8px); }
+    .term-tooltip.flip::after { top: auto; bottom: 100%; border-top-color: transparent; border-bottom-color: var(--color-bg-code); }
+
+    /* === 卡片与 Callout === */
+    .callout { display: flex; gap: var(--space-4); padding: var(--space-4); background: var(--color-accent-light); border-left: 4px solid var(--color-accent); border-radius: 0 var(--radius-md) var(--radius-md) 0; margin: var(--space-6) 0; }
+    .callout-title { display: block; font-family: var(--font-display); font-size: var(--text-xl); margin-bottom: var(--space-2); color: var(--color-accent-hover);}
+    
+    .arch-cards { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-6); margin: var(--space-8) 0; }
+    .arch-card { background: var(--color-surface); padding: var(--space-6); border-radius: var(--radius-md); box-shadow: var(--shadow-sm); border-top: 4px solid var(--color-text-muted); }
+    .arch-card.highlight { border-top-color: var(--color-accent); box-shadow: var(--shadow-md); }
+
+    /* === 代码翻译块 === */
+    .translation-block { display: grid; grid-template-columns: 1fr 1fr; border-radius: var(--radius-md); overflow: hidden; box-shadow: var(--shadow-md); margin: var(--space-8) 0; }
+    .translation-code { background: var(--color-bg-code); color: #E2E8F0; padding: var(--space-6); font-family: var(--font-mono); font-size: var(--text-sm); position: relative; overflow-x: hidden;}
+    .translation-code pre { white-space: pre-wrap; word-break: break-word; margin: 0; padding-top: var(--space-6);}
+    .translation-english { background: var(--color-surface-warm); padding: var(--space-6); font-size: var(--text-sm); border-left: 3px solid var(--color-accent); position: relative; }
+    .translation-label { position: absolute; top: var(--space-2); right: var(--space-3); font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.1em; opacity: 0.5; }
+    .tl { margin-top: 22px; margin-bottom: 0; color: var(--color-text); }
+    .c-key { color: #CBA6F7; } .c-str { color: #A6E3A1; } .c-num { color: #FAB387; } .c-cmd { color: #89B4FA; } .c-arg { color: #94E2D5; } .c-cmnt { color: #94A3B8; }
+
+    /* === 群聊动画 === */
+    .chat-window { background: var(--color-bg-warm); border-radius: var(--radius-md); padding: var(--space-4); margin: var(--space-8) 0; border: 1px solid var(--color-border); }
+    .chat-message { display: flex; gap: var(--space-3); margin-bottom: var(--space-4); opacity: 0; transform: translateY(10px); }
+    .chat-avatar { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; flex-shrink: 0; font-size: 1.2rem; }
+    .chat-bubble { background: var(--color-surface); padding: var(--space-3) var(--space-4); border-radius: 0 var(--radius-md) var(--radius-md) var(--radius-md); box-shadow: var(--shadow-sm); max-width: 80%; }
+    .chat-sender { font-size: var(--text-xs); font-weight: bold; margin-bottom: 2px; display: block; }
+    
+    /* === 数据流动画 === */
+    .flow-animation { background: var(--color-surface); padding: var(--space-6); border-radius: var(--radius-md); box-shadow: var(--shadow-md); margin: var(--space-8) 0; text-align: center; }
+    .flow-actors { display: flex; justify-content: space-between; margin-bottom: var(--space-8); position: relative; padding: 0 10px;}
+    .flow-actor { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); z-index: 2; width: 22%; }
+    .flow-actor-icon { width: 50px; height: 50px; border-radius: 50%; background: var(--color-bg-warm); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; border: 2px solid var(--color-border); transition: all 0.3s ease; }
+    .flow-actor.active .flow-actor-icon { border-color: var(--color-accent); box-shadow: 0 0 0 4px var(--color-accent-light); transform: scale(1.1); }
+    .flow-packet { position: absolute; width: 60px; height: 26px; background: var(--color-accent); color: white; border-radius: var(--radius-sm); top: 12px; left: 10%; opacity: 0; transition: all 0.6s ease; z-index: 1; font-size: 11px; display: flex; align-items: center; justify-content: center; font-weight: bold;}
+    .flow-label { font-size: var(--text-lg); font-weight: 600; min-height: 4rem; margin-bottom: var(--space-4); }
+
+    /* === 图标卡片列 === */
+    .icon-rows { display: flex; flex-direction: column; gap: var(--space-4); margin: var(--space-8) 0;}
+    .icon-row { display: flex; align-items: center; gap: var(--space-4); padding: var(--space-4); background: var(--color-surface); border-radius: var(--radius-md); box-shadow: var(--shadow-sm); border-left: 4px solid var(--color-accent);}
+    .icon-row p { margin: 0; color: var(--color-text-secondary); font-size: var(--text-sm); }
+    .icon-circle { width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.25rem; flex-shrink: 0; color: white; background: var(--color-accent-light);}
+
+    /* === 测验 === */
+    .quiz-container { background: var(--color-surface); padding: var(--space-6); border-radius: var(--radius-md); box-shadow: var(--shadow-md); margin: var(--space-8) 0; }
+    .quiz-option { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-4); border: 2px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-surface); cursor: pointer; text-align: left; font-size: var(--text-base); transition: all 0.2s; margin-bottom: 10px; width: 100%; box-sizing: border-box;}
+    .quiz-option:hover { border-color: var(--color-accent-muted); }
+    .quiz-option.selected { border-color: var(--color-accent); background: var(--color-accent-light); }
+    .quiz-option.correct { border-color: var(--color-success); background: var(--color-success-light); }
+    .quiz-option.incorrect { border-color: var(--color-error); background: var(--color-error-light); }
+    .quiz-feedback { max-height: 0; overflow: hidden; opacity: 0; transition: all 0.3s; }
+    .quiz-feedback.show { max-height: 300px; opacity: 1; padding: var(--space-4); margin-top: var(--space-3); border-radius: var(--radius-sm); }
+    .quiz-feedback.success { background: var(--color-success-light); color: var(--color-success); border-left: 4px solid var(--color-success); }
+    .quiz-feedback.error { background: var(--color-error-light); color: var(--color-error); border-left: 4px solid var(--color-error); }
+
+    .btn { background: var(--color-accent); color: white; border: none; padding: var(--space-2) var(--space-4); border-radius: var(--radius-sm); cursor: pointer; font-size: var(--text-base); font-weight: bold; transition: all 0.2s; }
+    .btn:hover { background: var(--color-accent-hover); }
+    
+    .animate-in { opacity: 0; transform: translateY(20px); transition: all var(--duration-slow) ease-out; }
+    .animate-in.visible { opacity: 1; transform: translateY(0); }
+  </style>
+</head>
+<body>
+
+  <section class="module">
+    <div class="module-content">
+      <header class="module-header animate-in">
+        <span class="module-number">01</span>
+        <h1 class="module-title">传统档案室的崩溃</h1>
+        <p class="module-subtitle">当每秒涌入 100 万条日志时，B+ 树为什么会扛不住？</p>
+      </header>
+
+      <div class="module-body animate-in">
+        <p>假设你正在为监控系统或物联网开发一个数据库，面临着“海量写入、不准丢失”的极端挑战。在存储引擎的选型上，存在两种截然不同的流派：</p>
+
+        <div class="arch-cards">
+          <div class="arch-card">
+            <h3 style="margin-top: 0">传统 B+ 树：精细的档案室</h3>
+            <p>像 MySQL InnoDB 这样的 <strong><span class="term" data-definition="一种平衡多叉树。数据只存在叶子节点，且叶子节点形成链表。它是关系型数据库最经典的底层存储结构。">B+ 树</span></strong>，就像一个极其严谨的档案室。每次来一份新文件（插入数据），理货员都要跑到迷宫般的书架深处，找到那份文件绝对正确的位置并塞进去。这叫**随机写**。</p>
+            <p style="color: var(--color-text-secondary); font-size: 0.9em;"><strong>致命弱点：</strong>为了腾出空间，书架经常要大挪移（页分裂）。如果每秒来 100 万份文件，理货员会因为在货架间疲于奔命而直接累死 <cite></cite>。</p>
+          </div>
+          <div class="arch-card highlight">
+            <h3 style="margin-top: 0; color: var(--color-accent);">LSM 树：极速分拣枢纽</h3>
+            <p><strong><span class="term" data-definition="Log-Structured Merge-tree。一种为超高写入吞吐量设计的存储结构。核心思想是放弃原地修改，全部采用追加写入（顺序写），配合后台整理。">LSM 树</span></strong>（如 RocksDB / Cassandra 用的结构）改变了游戏规则。它像一个现代化的双十一分拣中心。快递车来了，直接把包裹倾泻到大厅正中央的巨大收集筐里。这叫**顺序写**。</p>
+            <p style="color: var(--color-text-secondary); font-size: 0.9em;"><strong>核心优势：</strong>不找位置，先堆起来再说。用极其狂暴的写入速度吃下所有流量，至于“整理”，那是夜班工人的事 <cite></cite>。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="module">
+    <div class="module-content">
+      <header class="module-header animate-in">
+        <span class="module-number">02</span>
+        <h1 class="module-title">物流大厅的三大基石</h1>
+        <p class="module-subtitle">看看一条数据是如何极速落地的。</p>
+      </header>
+
+      <div class="module-body animate-in">
+        <p>当一个快递（写入请求）抵达 LSM 分拣枢纽时，它会经历一套行云流水的入库流程：</p>
+
+        <div class="flow-animation">
+          <h3 style="margin-top:0;">LSM 树极速写入流水线</h3>
+          <div class="flow-label" id="flow-label">点击“下一步”演示数据落地</div>
+          
+          <div class="flow-actors">
+            <div class="flow-actor" id="flow-app">
+              <div class="flow-actor-icon" style="font-size: 1.2rem; border-color: var(--color-text-muted)">🚚</div>
+              <span style="font-size: 0.85em; font-weight:bold; color: var(--color-text-muted)">应用层</span>
+            </div>
+            <div class="flow-packet" id="flow-packet"></div>
+            <div class="flow-actor" id="flow-wal">
+              <div class="flow-actor-icon" style="font-size: 1.2rem; border-color: var(--color-actor-3)">📹</div>
+              <span style="font-size: 0.85em; font-weight:bold; color: var(--color-actor-3)">1. WAL</span>
+            </div>
+            <div class="flow-actor" id="flow-mem">
+              <div class="flow-actor-icon" style="font-size: 1.2rem; border-color: var(--color-actor-1)">🛒</div>
+              <span style="font-size: 0.85em; font-weight:bold; color: var(--color-actor-1)">2. Memtable</span>
+            </div>
+            <div class="flow-actor" id="flow-sst">
+              <div class="flow-actor-icon" style="font-size: 1.2rem; border-color: var(--color-text)">📦</div>
+              <span style="font-size: 0.85em; font-weight:bold; color: var(--color-text)">3. SSTable</span>
+            </div>
+          </div>
+
+          <button class="btn" onclick="flowNext()" id="flow-btn">下一步 (1/5)</button>
+        </div>
+
+        <div class="icon-rows">
+          <div class="icon-row">
+            <div class="icon-circle" style="background: var(--color-actor-3)">📹</div>
+            <div>
+              <strong>1. WAL (Write-Ahead Log): 监控探头与登记簿</strong>
+              <p>包裹进门前，先在纸本上按顺序飞速写下一笔记录。万一突然停电，供电恢复后，只要查阅 <strong><span class="term" data-definition="预写日志。在数据真正落盘前，先以纯追加（顺序写）的方式写入磁盘的日志文件，用于在系统崩溃时恢复尚未落盘的内存数据。">WAL</span></strong>，就能知道停电前收了哪些包裹，保证数据绝对不丢 <cite></cite>。</p>
+            </div>
+          </div>
+          <div class="icon-row">
+            <div class="icon-circle" style="background: var(--color-actor-1)">🛒</div>
+            <div>
+              <strong>2. Memtable: 大厅中央的分拣筐</strong>
+              <p>登记完后，包裹被扔进大厅的巨大收集筐里。这个筐是放置在计算机高速**内存**里的数据结构（如跳表）。因为不用去磁盘找位置，所以写入速度飙到极限 <cite></cite>。</p>
+            </div>
+          </div>
+          <div class="icon-row">
+            <div class="icon-circle" style="background: var(--color-text)">📦</div>
+            <div>
+              <strong>3. SSTable: 塑封的不可变集装箱</strong>
+              <p>当收集筐（Memtable）满了，它就会被瞬间打包，直接拖进仓库（磁盘），变成一个塑封好的 <strong><span class="term" data-definition="Sorted String Table。LSM 树在磁盘上的文件格式。内部的 key 是有序排列的。一旦生成，就绝对不可更改（不可变）。">SSTable</span></strong>。这种“写满就封存”的方式避免了任何原地的随机修改 <cite></cite>。</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <section class="module">
+    <div class="module-content">
+      <header class="module-header animate-in">
+        <span class="module-number">03</span>
+        <h1 class="module-title">夜班整理与退件贴纸</h1>
+        <p class="module-subtitle">既然不准修改，那我们怎么删除或更新数据？</p>
+      </header>
+
+      <div class="module-body animate-in">
+        <p>在 LSM 的世界里，有一个铁律：**落入集装箱 (SSTable) 的数据绝对不可更改**。那如果你想删除或者更新一条旧数据怎么办？</p>
+        
+        <p>答案是：**用写代替删**。你想删除包裹 A，系统绝不会去翻旧集装箱找它，而是直接在当前的收集筐里扔进去一个写着“取消 A”的新包裹，这个假包裹被称为 <strong><span class="term" data-definition="墓碑。LSM 树中用于标记数据删除的特殊记录。读取时如果先读到墓碑，就认为该数据已不存在。">墓碑 (Tombstone)</span></strong> <cite></cite>。</p>
+
+        <div class="chat-window">
+          <div id="chat-messages">
+            <div class="chat-message" id="msg-1" style="display:none;">
+              <div class="chat-avatar" style="background: var(--color-actor-2)">👷‍♂️</div>
+              <div class="chat-bubble">
+                <span class="chat-sender" style="color: var(--color-actor-2)">夜班整理工 (Compaction 线程)</span>
+                <p>唉，白班那些人只管往仓库里堆集装箱 (SSTable)，现在仓库快塞满了，而且有很多同一个包裹的更新版和退件贴纸 (Tombstone) 散落在不同的箱子里。</p>
+              </div>
+            </div>
+            <div class="chat-message" id="msg-2" style="display:none;">
+              <div class="chat-avatar" style="background: var(--color-actor-2)">👷‍♂️</div>
+              <div class="chat-bubble">
+                <span class="chat-sender" style="color: var(--color-actor-2)">夜班整理工 (Compaction 线程)</span>
+                <p>我要开启 <strong><span class="term" data-definition="压实/合并操作。LSM 树的后台核心机制。将多个小且有重叠的 SSTable 文件读取到内存，进行多路归并排序，清理掉被覆盖的旧版本和被墓碑标记的记录，最后写成更大、更干净的新 SSTable。">Compaction (合并压缩)</span></strong> 了！我把 L0 层那几个小箱子拆开，把它们按顺序合并归类。如果发现某个包裹已经有了一张“退件贴纸”，我就把它们俩一起扔进垃圾桶，彻底释放空间 <cite></cite>！</p>
+              </div>
+            </div>
+            <div class="chat-message" id="msg-3" style="display:none;">
+              <div class="chat-avatar" style="background: var(--color-actor-2)">👷‍♂️</div>
+              <div class="chat-bubble">
+                <span class="chat-sender" style="color: var(--color-actor-2)">夜班整理工 (Compaction 线程)</span>
+                <p>不过老板，我有个抱怨。为了保持仓库整洁，同一个包裹我可能在几天的夜班里被反复搬来搬去、写进新箱子里。用户明明只写入了 1 次，但硬盘实际上被我写了 8 次！这 <strong><span class="term" data-definition="Write Amplification。存储引擎内部为了维护数据结构，导致硬盘实际写入的数据量远大于应用层原始请求写入的数据量。这是 LSM 树的核心代价。">写放大 (Write Amplification)</span></strong> 太严重了，SSD 硬盘寿命烧得很快啊 <cite></cite>！</p>
+              </div>
+            </div>
+          </div>
+          <button class="btn" style="margin-top:10px;" onclick="playChatNext()" id="chat-btn">▶ 播放仓库夜班通讯</button>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <section class="module">
+    <div class="module-content">
+      <header class="module-header animate-in">
+        <span class="module-number">04</span>
+        <h1 class="module-title">大海捞针与智能探测仪</h1>
+        <p class="module-subtitle">文件堆积如山，如何快速找回一个包裹？</p>
+      </header>
+
+      <div class="module-body animate-in">
+        <p>LSM 树的读取路径非常“坎坷”。如果有人来取件，你必须先找大厅的收集筐 (Memtable)，没有的话，再去翻仓库里最新的 L0 层集装箱，然后再去 L1、L2 层找 <cite></cite>。为了避免把成千上万个集装箱全撬开看一遍，我们需要一个外部黑科技。</p>
+
+        <p>每个集装箱在封存时，外面都贴了一个 <strong><span class="term" data-definition="一种空间效率极高的概率型数据结构。它可以非常快速地告诉你某个元素“绝对不在集合中”或者“可能在集合中”。">布隆过滤器 (Bloom Filter)</span></strong> 智能探测标签 <cite></cite>。</p>
+
+        <div class="translation-block">
+          <div class="translation-code">
+            <span class="translation-label">布隆过滤器的探测逻辑</span>
+            <pre><code><span class="c-key">function</span> <span class="c-func">findPackage</span>(container, packageId) {
+  <span class="c-key">const</span> probe = container.bloomFilter.<span class="c-func">scan</span>(packageId);
+  
+  <span class="c-key">if</span> (probe === <span class="c-str">'DEFINITELY_NOT'</span>) {
+    <span class="c-cmnt">// 探测仪发绿光</span>
+    <span class="c-key">return</span> <span class="c-str">'Skip this container'</span>; 
+  } 
+  
+  <span class="c-key">if</span> (probe === <span class="c-str">'MAYBE_INSIDE'</span>) {
+    <span class="c-cmnt">// 探测仪发黄光</span>
+    <span class="c-key">const</span> data = <span class="c-func">openContainerAndSearch</span>(container);
+    <span class="c-key">return</span> data ? data : <span class="c-str">'False Alarm'</span>;
+  }
+}</code></pre>
+          </div>
+          <div class="translation-english">
+            <span class="translation-label">大白话翻译</span>
+            <div class="translation-lines">
+              <p class="tl" style="margin-top: 5px;">拿着扫描仪对着集装箱外壳“滴”一下。</p>
+              <br>
+              <p class="tl" style="margin-top: 15px;">如果探测仪明确回答：**“绝对不在里面！”**</p>
+              <p class="tl" style="margin-top: 5px;">太好了！连开箱的力气都省了（省了一次极慢的磁盘 I/O 操作），直接去查下一个箱子 <cite></cite>。</p>
+              <br>
+              <p class="tl" style="margin-top: 15px;">如果探测仪犹豫地回答：**“可能在里面。”**</p>
+              <p class="tl" style="margin-top: 5px;">那没办法，只能把沉重的集装箱撬开（读取磁盘），去里面翻找。有可能真的找到了，也有可能是探测仪误报（假阳性，False Positive） <cite></cite>。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="module">
+    <div class="module-content">
+      <header class="module-header animate-in">
+        <span class="module-number">05</span>
+        <h1 class="module-title">数据库架构师的抉择</h1>
+        <p class="module-subtitle">没有完美的结构，只有最适合的场景。</p>
+      </header>
+
+      <div class="module-body animate-in">
+        
+        <div class="quiz-container" id="quiz-1">
+          <h3>实战架构选型：公司正在开发一个物联网（IoT）项目，数百万个传感器每秒钟都会源源不断地上报温度和湿度数据（全是写操作）。但是，业务端每天只需要偶尔生成一张昨天的温度曲线图（读操作极少）。如果你是首席架构师，为了支撑这种极端的高吞吐量写入，你应该为时序数据库选择哪种底层存储引擎？</h3>
+          <div class="quiz-options">
+            <button class="quiz-option" data-value="a" onclick="selectOption(this)">
+              A. 坚决使用 MySQL 默认的 InnoDB 引擎（B+ 树）。因为 B+ 树的范围查询非常优秀，不仅写入快，而且画温度曲线图毫无压力。
+            </button>
+            <button class="quiz-option" data-value="b" onclick="selectOption(this)">
+              B. 选用底层基于 LSM 树的存储引擎（如 RocksDB）。通过将随机写转换为顺序写加上 Memtable 缓冲，它能轻松吃下每秒百万级的并发写入突发流。
+            </button>
+            <button class="quiz-option" data-value="c" onclick="selectOption(this)">
+              C. 放弃数据库，直接让百万个传感器同时往一个巨大的 TXT 文本文件里追加内容，这样没有任何存储引擎的开销。
+            </button>
+          </div>
+          <div class="quiz-feedback" id="quiz-1-feedback"></div>
+          <button class="btn" style="margin-top:15px;" onclick="checkQuiz()">提交方案</button>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <script>
+    (function() {
+      // 1. 滚动动画
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('visible');
+            observer.unobserve(entry.target);
+          }
+        });
+      }, { rootMargin: '0px 0px -10% 0px', threshold: 0.1 });
+      document.querySelectorAll('.animate-in').forEach(el => observer.observe(el));
+
+      // 2. Tooltip 悬浮字典
+      let activeTooltip = null;
+      function positionTooltip(term, tip) {
+        const rect = term.getBoundingClientRect();
+        const tipWidth = Math.min(320, window.innerWidth * 0.8); 
+        let left = rect.left + rect.width / 2 - tipWidth / 2;
+        left = Math.max(8, Math.min(left, window.innerWidth - tipWidth - 8));
+        
+        tip.style.left = left + 'px';
+        document.body.appendChild(tip);
+        
+        const tipHeight = tip.offsetHeight;
+        if (rect.top - tipHeight - 8 < 0) {
+          tip.style.top = (rect.bottom + 8) + 'px';
+          tip.classList.add('flip');
+        } else {
+          tip.style.top = (rect.top - tipHeight - 8) + 'px';
+          tip.classList.remove('flip');
+        }
+      }
+
+      document.querySelectorAll('.term').forEach(term => {
+        const tip = document.createElement('span');
+        tip.className = 'term-tooltip';
+        tip.textContent = term.dataset.definition;
+
+        const showTip = (e) => {
+          e.stopPropagation();
+          if (activeTooltip && activeTooltip !== tip) {
+            activeTooltip.classList.remove('visible');
+            activeTooltip.remove();
+          }
+          if (!tip.classList.contains('visible')) {
+            positionTooltip(term, tip);
+            requestAnimationFrame(() => tip.classList.add('visible'));
+            activeTooltip = tip;
+            term.classList.add('active');
+          }
+        };
+
+        const hideTip = () => {
+          tip.classList.remove('visible');
+          term.classList.remove('active');
+          setTimeout(() => { if (!tip.classList.contains('visible')) tip.remove(); }, 150);
+          if (activeTooltip === tip) activeTooltip = null;
+        };
+
+        term.addEventListener('mouseenter', showTip);
+        term.addEventListener('mouseleave', hideTip);
+        term.addEventListener('click', (e) => {
+            if(activeTooltip === tip) { hideTip(); } else { showTip(e); }
+        });
+      });
+
+      document.addEventListener('click', () => {
+        if (activeTooltip) {
+          activeTooltip.classList.remove('visible');
+          document.querySelectorAll('.term.active').forEach(t => t.classList.remove('active'));
+          activeTooltip.remove();
+          activeTooltip = null;
+        }
+      });
+
+      // 3. 群聊推演动画
+      let currentChatStep = 1;
+      window.playChatNext = function() {
+        if (currentChatStep > 3) {
+          for(let i=1; i<=3; i++) {
+            const msg = document.getElementById(`msg-${i}`);
+            msg.style.display = 'none';
+            msg.style.opacity = '0';
+            msg.style.transform = 'translateY(10px)';
+          }
+          currentChatStep = 1;
+          document.getElementById('chat-btn').innerText = "▶ 播放仓库夜班通讯";
+          return;
+        }
+        
+        const msg = document.getElementById(`msg-${currentChatStep}`);
+        msg.style.display = 'flex';
+        void msg.offsetWidth;
+        msg.style.transition = 'all 0.4s ease-out';
+        msg.style.opacity = '1';
+        msg.style.transform = 'translateY(0)';
+        
+        currentChatStep++;
+        document.getElementById('chat-btn').innerText = currentChatStep > 3 ? "↺ 重新播放" : `▶ 继续播放 (${currentChatStep-1}/3)`;
+      };
+
+      // 4. 数据流动画逻辑
+      const flowSteps = [
+        { label: "1. 快递卡车抵达！高并发写入请求开始涌入。", active: "flow-app", pktText: "写入数据", pktFrom: "18%", pktTo: "35%" },
+        { label: "2. 为了防止意外宕机，先在门口的监控录像 (WAL) 上记下纯文本流水账。", active: "flow-wal", pktText: "记入流水账", pktFrom: "35%", pktTo: "60%" },
+        { label: "3. 登记完后，把包裹立刻扔进大厅的内存缓冲筐 (Memtable) 中。因为都在内存操作，写入响应极快返回给用户！", active: "flow-mem", pktText: "堆入缓冲", pktFrom: "60%", pktTo: "60%" },
+        { label: "4. 当缓冲筐 (Memtable) 满了，瞬间封箱打包，下沉 (flush) 到磁盘成为不可变的集装箱 (SSTable)。", active: "flow-sst", pktText: "打包落盘", pktFrom: "60%", pktTo: "85%" }
+      ];
+      let currentFlowStep = 0;
+      
+      window.flowNext = function() {
+        if (currentFlowStep >= flowSteps.length) {
+          currentFlowStep = 0;
+          document.getElementById('flow-btn').innerText = `下一步 (1/4)`;
+          document.getElementById('flow-label').innerText = "点击“下一步”演示数据落地";
+          document.querySelectorAll('.flow-actor').forEach(el => el.classList.remove('active'));
+          document.getElementById('flow-packet').style.opacity = '0';
+          return;
+        }
+
+        const step = flowSteps[currentFlowStep];
+        document.getElementById('flow-label').innerText = step.label;
+        document.querySelectorAll('.flow-actor').forEach(el => el.classList.remove('active'));
+        document.getElementById(step.active).classList.add('active');
+
+        const pkt = document.getElementById('flow-packet');
+        pkt.innerText = step.pktText;
+        
+        pkt.style.transition = 'none';
+        pkt.style.left = step.pktFrom;
+        pkt.style.opacity = '1';
+        
+        setTimeout(() => {
+          pkt.style.transition = 'all 0.6s ease';
+          pkt.style.left = step.pktTo;
+        }, 50);
+
+        currentFlowStep++;
+        document.getElementById('flow-btn').innerText = currentFlowStep === 4 ? "重新演示" : `下一步 (${currentFlowStep + 1}/4)`;
+      };
+
+      // 5. 测验逻辑
+      window.selectOption = function(btn) {
+        const container = btn.closest('.quiz-options');
+        container.querySelectorAll('.quiz-option').forEach(opt => opt.classList.remove('selected'));
+        btn.classList.add('selected');
+      };
+
+      window.checkQuiz = function() {
+        const selected = document.querySelector('#quiz-1 .quiz-option.selected');
+        const feedback = document.getElementById('quiz-1-feedback');
+        
+        if (!selected) {
+          feedback.innerHTML = '请先下达架构决策！';
+          feedback.className = 'quiz-feedback show error';
+          return;
+        }
+
+        const val = selected.getAttribute('data-value');
+        if (val === 'b') {
+          selected.classList.add('correct');
+          feedback.innerHTML = '<strong>极其敏锐的架构嗅觉！</strong><br>这正是 LSM 树最典型的优势场景：“写极多、读极少”的日志或时序数据流 <cite></cite>。用牺牲一部分读取复杂度的方式，换取了狂暴的写入吞吐量。现代的时序数据库（如 InfluxDB）底层广泛采用了类似 LSM 的思想。';
+          feedback.className = 'quiz-feedback show success';
+        } else if (val === 'a') {
+          selected.classList.add('incorrect');
+          feedback.innerHTML = '<strong>系统将面临瘫痪风险。</strong><br>B+ 树是为强事务和频繁的随机读写（OLTP）设计的。在每秒百万级别的纯追加写入压力下，B+ 树会陷入疯狂的“页分裂”和锁竞争中，导致磁盘 I/O 碎片化严重，写入延迟飙升，最终完全扛不住流量 <cite></cite>。';
+          feedback.className = 'quiz-feedback show error';
+        } else if (val === 'c') {
+          selected.classList.add('incorrect');
+          feedback.innerHTML = '<strong>极其业余的做法。</strong><br>虽然追加写纯文本很快，但当你第二天需要读取并生成温度曲线图时，你需要在一座大山一样的乱序文件里进行全文检索，这在工程上是根本无法接受的灾难。你需要的是一个带高效索引的引擎。';
+          feedback.className = 'quiz-feedback show error';
+        }
+        
+        document.querySelectorAll('#quiz-1 .quiz-option').forEach(btn => btn.style.pointerEvents = 'none');
+      };
+
+    })();
+  </script>
+</body>
+</html>
