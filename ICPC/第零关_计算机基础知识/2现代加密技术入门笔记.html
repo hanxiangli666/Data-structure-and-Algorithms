@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>现代加密技术：给数据上锁的艺术</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400;1,9..40,500&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  
+  <style>
+    /* === 核心设计系统 (Design System) === */
+    :root {
+      --color-bg:             #FAF7F2;
+      --color-bg-warm:        #F5F0E8;
+      --color-bg-code:        #1E1E2E;
+      --color-text:           #2C2A28;
+      --color-text-secondary: #6B6560;
+      --color-text-muted:     #9E9790;
+      --color-border:         #E5DFD6;
+      --color-border-light:   #EEEBE5;
+      --color-surface:        #FFFFFF;
+      --color-surface-warm:   #FDF9F3;
+      --color-accent:         #D94F30;
+      --color-accent-hover:   #C4432A;
+      --color-accent-light:   #FDEEE9;
+      --color-accent-muted:   #E8836C;
+      --color-success:        #2D8B55;
+
+      --font-display:  'Bricolage Grotesque', sans-serif;
+      --font-body:     'DM Sans', -apple-system, sans-serif;
+      --font-mono:     'JetBrains Mono', monospace;
+
+      --text-xs: 0.75rem; --text-sm: 0.875rem; --text-base: 1rem;
+      --text-lg: 1.125rem; --text-xl: 1.25rem; --text-2xl: 1.5rem;
+      --text-3xl: 1.875rem; --text-4xl: 2.25rem; --text-6xl: 3.75rem;
+
+      --space-1: 0.25rem; --space-2: 0.5rem; --space-3: 0.75rem;
+      --space-4: 1rem; --space-6: 1.5rem; --space-8: 2rem;
+      --space-12: 3rem; --space-16: 4rem;
+
+      --content-width: 800px;
+      --radius-sm: 8px; --radius-md: 12px;
+      --shadow-md: 0 4px 12px rgba(44, 42, 40, 0.08);
+      --shadow-lg: 0 8px 24px rgba(44, 42, 40, 0.1);
+      
+      --duration-fast: 150ms; --duration-slow: 500ms;
+    }
+
+    body {
+      margin: 0; font-family: var(--font-body); color: var(--color-text);
+      background: var(--color-bg); line-height: 1.6;
+      background-image: radial-gradient(ellipse at 20% 50%, rgba(217, 79, 48, 0.03) 0%, transparent 50%);
+    }
+
+    h1, h2, h3 { font-family: var(--font-display); line-height: 1.15; }
+
+    /* === 模块布局 === */
+    .module {
+      min-height: 100vh; padding: var(--space-16) var(--space-6);
+      border-bottom: 1px solid var(--color-border);
+    }
+    .module:nth-child(even) { background: var(--color-bg-warm); }
+    .module-content { max-width: var(--content-width); margin: 0 auto; }
+    
+    .module-number { font-size: var(--text-6xl); font-weight: 800; color: var(--color-accent); opacity: 0.15; display: block; margin-bottom: -20px; }
+    .module-title { font-size: var(--text-4xl); font-weight: 700; margin: 0 0 var(--space-2) 0; }
+    .module-subtitle { font-size: var(--text-lg); color: var(--color-text-secondary); margin-bottom: var(--space-12); }
+
+    /* === 交互词汇表 (Glossary Tooltips) === */
+    .term {
+      border-bottom: 1.5px dashed var(--color-accent-muted);
+      cursor: pointer; position: relative; font-weight: 500; color: var(--color-accent);
+    }
+    .term:hover { border-bottom-color: var(--color-accent); }
+    
+    .term-tooltip {
+      position: fixed; background: var(--color-bg-code); color: #CDD6F4;
+      padding: var(--space-3) var(--space-4); border-radius: var(--radius-sm);
+      font-size: var(--text-sm); font-family: var(--font-body);
+      width: max(200px, min(320px, 80vw)); box-shadow: var(--shadow-lg);
+      pointer-events: none; opacity: 0; transition: opacity var(--duration-fast);
+      z-index: 10000; text-align: left;
+    }
+    .term-tooltip::after {
+      content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+      border: 6px solid transparent; border-top-color: var(--color-bg-code);
+    }
+    .term-tooltip.visible { opacity: 1; }
+
+    /* === 代码翻译块 (Translation Blocks) === */
+    .translation-block {
+      display: grid; grid-template-columns: 1fr 1fr; border-radius: var(--radius-md);
+      overflow: hidden; box-shadow: var(--shadow-md); margin: var(--space-8) 0;
+    }
+    .translation-code {
+      background: var(--color-bg-code); color: #CDD6F4; padding: var(--space-6);
+      font-family: var(--font-mono); font-size: var(--text-sm); position: relative;
+    }
+    .translation-code pre { white-space: pre-wrap; word-break: break-word; margin: 0; padding-top: var(--space-4);}
+    .translation-english {
+      background: var(--color-surface-warm); padding: var(--space-6);
+      font-size: var(--text-sm); border-left: 3px solid var(--color-accent); position: relative;
+    }
+    .translation-label {
+      position: absolute; top: var(--space-2); right: var(--space-3);
+      font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.1em; opacity: 0.5;
+    }
+    .tl { margin-top: 25px; margin-bottom: 0; } /* 对齐大白话和代码 */
+
+    /* === 高光提示框 (Callouts) === */
+    .callout {
+      display: flex; gap: var(--space-4); padding: var(--space-4);
+      background: var(--color-accent-light); border-left: 4px solid var(--color-accent);
+      border-radius: 0 var(--radius-sm) var(--radius-sm) 0; margin: var(--space-6) 0;
+    }
+    .callout-icon { font-size: var(--text-2xl); }
+    .callout-title { display: block; font-family: var(--font-display); margin-bottom: var(--space-1); }
+
+    /* 滚动动画 */
+    .animate-in {
+      opacity: 0; transform: translateY(20px);
+      transition: opacity var(--duration-slow) ease-out, transform var(--duration-slow) ease-out;
+    }
+    .animate-in.visible { opacity: 1; transform: translateY(0); }
+    
+    /* 响应式 */
+    @media (max-width: 768px) {
+      .translation-block { grid-template-columns: 1fr; }
+      .translation-english { border-left: none; border-top: 3px solid var(--color-accent); }
+      .tl { margin-top: 10px; }
+    }
+  </style>
+</head>
+<body>
+
+  <section class="module">
+    <div class="module-content">
+      <header class="module-header animate-in">
+        <span class="module-number">01</span>
+        <h1 class="module-title">对称加密：一把钥匙开一把锁</h1>
+        <p class="module-subtitle">用同一个密码进行加密和解密，速度极快，适合处理大量数据。</p>
+      </header>
+
+      <div class="module-body animate-in">
+        <p>假设你整理了一份详尽的球队战术手册，你需要保护它不被对手偷走。你买了一个密码箱把战术板锁进去。这就是<span class="term" data-definition="通信双方使用同一个密钥进行加密和解密的算法。速度快，但密钥分发困难。">对称加密</span>。</p>
+        
+        <p>你和主教练都知道密码（比如 123456），所以你们俩都能轻易打开箱子。这就好比计算机世界里的 <span class="term" data-definition="高级加密标准（Advanced Encryption Standard）。目前最流行、最安全的对称加密算法之一。">AES 算法</span>。它处理大块数据（比如一整场比赛的高清录像）非常高效。</p>
+
+        <div class="translation-block">
+          <div class="translation-code">
+            <span class="translation-label">OpenSSL 命令</span>
+            <pre><code>openssl enc -aes-256-cbc \
+  -salt \
+  -in playbook.txt \
+  -out playbook.enc \
+  -k 123456</code></pre>
+          </div>
+          <div class="translation-english">
+            <span class="translation-label">大白话翻译</span>
+            <div class="translation-lines">
+              <p class="tl">嘿电脑，帮我用 AES 算法加密一份文件...</p>
+              <p class="tl">加点“<span class="term" data-definition="在加密前混入密码的一个随机字符串。防止两个相同的文件加密后看起来一模一样。">盐值(Salt)</span>”，这样即使战术板内容一样，每次锁起来的样子也不同...</p>
+              <p class="tl">要把这份叫 playbook.txt 的明文文件塞进去...</p>
+              <p class="tl">吐出一份叫 playbook.enc 的乱码文件（密文）...</p>
+              <p class="tl">我们约定的密码钥匙是：123456。</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="callout">
+          <div class="callout-icon">💡</div>
+          <div class="callout-content">
+            <strong class="callout-title">致命弱点：钥匙怎么给出去？</strong>
+            <p>对称加密最大的问题是：如果球队刚招募了一个新助理教练，你怎么把“123456”这个密码告诉他？发微信？可能被截获。在网络世界里，如果我们没有一个安全的通道，对称加密的钥匙就无法安全传递。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="module">
+    <div class="module-content">
+      <header class="module-header animate-in">
+        <span class="module-number">02</span>
+        <h1 class="module-title">哈希函数：数据的“指纹”</h1>
+        <p class="module-subtitle">不可逆的单向过程，用于校验数据是否被悄悄篡改过。</p>
+      </header>
+
+      <div class="module-body animate-in">
+        <p>作为球队经理，你需要记录球员的技术统计。你怎么确保发给联盟的 Excel 表格在传输过程中，没有被别人恶意把得分从 10 分改成了 20 分？</p>
+        <p>这时候你需要 <span class="term" data-definition="把任意长度的数据，转换成固定长度的一串字符（摘要）。只能正向计算，不能反推原文。">哈希函数(Hash)</span>。你可以把它理解为给文件按了一个“数字指纹”。比如 <span class="term" data-definition="安全散列算法（Secure Hash Algorithm）。输出 256 位长度的哈希值，目前极度安全，极难发生碰撞。">SHA256</span>。</p>
+
+        <div class="translation-block">
+          <div class="translation-code">
+            <span class="translation-label">OpenSSL 命令</span>
+            <pre><code>openssl dgst -sha256 stats.csv</code></pre>
+          </div>
+          <div class="translation-english">
+            <span class="translation-label">大白话翻译</span>
+            <div class="translation-lines">
+              <p class="tl" style="margin-top: 0;">电脑，请帮我给这份名为 stats.csv 的技术统计表提取一个 SHA256 格式的“指纹摘要”。</p>
+            </div>
+          </div>
+        </div>
+
+        <p><strong>雪崩效应：</strong>哪怕你只把表格里的一处空格删掉，生成的“指纹”也会变得面目全非。联盟收到表格后，自己算一遍指纹，和你发给他们的指纹一核对，就知道数据有没有被动手脚。</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="module">
+    <div class="module-content">
+      <header class="module-header animate-in">
+        <span class="module-number">03</span>
+        <h1 class="module-title">非对称加密：锁和钥匙分离</h1>
+        <p class="module-subtitle">公钥加密，私钥解密。完美解决陌生人之间建立信任的问题。</p>
+      </header>
+
+      <div class="module-body animate-in">
+        <p>为了解决第一章里“无法安全分发钥匙”的问题，计算机科学家发明了 <span class="term" data-definition="使用一对密钥：公钥和私钥。公钥用于加密，私钥用于解密。速度慢，通常只用来加密极小块的数据。">非对称加密（如 RSA）</span>。</p>
+        <p>想象你在球馆门口放了一个专用的“球探报告收集箱”。这个箱子有一个任何人都可以用的投递口（**<span class="term" data-definition="公开的钥匙，任何人都能获取，用于把数据锁起来。">公钥 Public Key</span>**）。球探们把对手的分析报告从投递口塞进去（加密）。</p>
+        <p>一旦报告掉了进去，没有任何人能把它拿出来。只有作为经理的你，手里握着唯一的一把物理钥匙（**<span class="term" data-definition="绝对保密的钥匙，只有你自己拥有，用于把数据解开。">私钥 Private Key</span>**），才能打开箱子底部取出报告。</p>
+
+        <div class="translation-block">
+          <div class="translation-code">
+            <span class="translation-label">加密流程</span>
+            <pre><code># 1. 球探用你的公钥加密报告
+openssl pkeyutl -encrypt \
+  -pubin -inkey public_key.pem \
+  -in report.txt \
+  -out encrypted.bin
+
+# 2. 你用私钥解密报告
+openssl pkeyutl -decrypt \
+  -inkey private_key.pem \
+  -in encrypted.bin \
+  -out report.txt</code></pre>
+          </div>
+          <div class="translation-english">
+            <span class="translation-label">大白话翻译</span>
+            <div class="translation-lines">
+              <p class="tl">球探执行：把明文报告 report.txt 丢进带有你公开投递口（public_key.pem）的信箱里，变成绝对安全的乱码（encrypted.bin）。</p>
+              <br><br><br>
+              <p class="tl">你执行：用你口袋里绝不外传的私钥（private_key.pem），把那堆乱码解开，还原成原始的球探报告。</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="callout">
+          <div class="callout-icon">💡</div>
+          <div class="callout-content">
+            <strong class="callout-title">HTTPS 的终极组合拳</strong>
+            <p>非对称加密非常安全，但它计算起来极度缓慢。所以真实的互联网（比如你访问带锁的 HTTPS 网站）是这样配合的：<br>
+            先用缓慢的<b>非对称加密</b>，把“一把简单的密码锁钥匙”偷偷传给对方；<br>
+            然后双方再用这把简单的钥匙，通过飞快的<b>对称加密</b>来互传大文件。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    (function() {
+      // 滚动进入动画
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('visible');
+            observer.unobserve(entry.target);
+          }
+        });
+      }, { rootMargin: '0px 0px -10% 0px', threshold: 0.1 });
+
+      document.querySelectorAll('.animate-in').forEach(el => observer.observe(el));
+
+      // 词汇表 Tooltip 逻辑 (修复了被 overflow: hidden 裁剪的问题)
+      let activeTooltip = null;
+
+      function positionTooltip(term, tip) {
+        const rect = term.getBoundingClientRect();
+        const tipWidth = Math.min(320, window.innerWidth * 0.8); 
+        let left = rect.left + rect.width / 2 - tipWidth / 2;
+        left = Math.max(8, Math.min(left, window.innerWidth - tipWidth - 8));
+        
+        tip.style.left = left + 'px';
+        document.body.appendChild(tip); // 添加到 body 防止被父元素裁剪
+        
+        const tipHeight = tip.offsetHeight;
+        if (rect.top - tipHeight - 8 < 0) {
+          // 空间不够，放下面
+          tip.style.top = (rect.bottom + 8) + 'px';
+          tip.classList.add('flip');
+        } else {
+          // 默认放上面
+          tip.style.top = (rect.top - tipHeight - 8) + 'px';
+          tip.classList.remove('flip');
+        }
+      }
+
+      document.querySelectorAll('.term').forEach(term => {
+        const tip = document.createElement('span');
+        tip.className = 'term-tooltip';
+        tip.textContent = term.dataset.definition;
+
+        const showTip = (e) => {
+          e.stopPropagation();
+          if (activeTooltip && activeTooltip !== tip) {
+            activeTooltip.classList.remove('visible');
+            activeTooltip.remove();
+          }
+          if (!tip.classList.contains('visible')) {
+            positionTooltip(term, tip);
+            requestAnimationFrame(() => tip.classList.add('visible'));
+            activeTooltip = tip;
+          }
+        };
+
+        const hideTip = () => {
+          tip.classList.remove('visible');
+          setTimeout(() => { if (!tip.classList.contains('visible')) tip.remove(); }, 150);
+          if (activeTooltip === tip) activeTooltip = null;
+        };
+
+        term.addEventListener('mouseenter', showTip);
+        term.addEventListener('mouseleave', hideTip);
+        term.addEventListener('click', (e) => {
+            if(activeTooltip === tip) { hideTip(); } else { showTip(e); }
+        });
+      });
+
+      document.addEventListener('click', () => {
+        if (activeTooltip) {
+          activeTooltip.classList.remove('visible');
+          activeTooltip.remove();
+          activeTooltip = null;
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

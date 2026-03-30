@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI 时代的前端直觉</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400;1,9..40,500&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      /* --- BACKGROUNDS --- */
+      --color-bg:             #FAF7F2;
+      --color-bg-warm:        #F5F0E8;
+      --color-bg-code:        #1E1E2E;
+      --color-text:           #2C2A28;
+      --color-text-secondary: #6B6560;
+      --color-text-muted:     #9E9790;
+      --color-border:         #E5DFD6;
+      --color-border-light:   #EEEBE5;
+      --color-surface:        #FFFFFF;
+      --color-surface-warm:   #FDF9F3;
+
+      /* --- ACCENT --- */
+      --color-accent:         #D94F30;
+      --color-accent-hover:   #C4432A;
+      --color-accent-light:   #FDEEE9;
+      --color-accent-muted:   #E8836C;
+
+      /* --- SEMANTIC & ACTORS --- */
+      --color-success:        #2D8B55;
+      --color-success-light:  #E8F5EE;
+      --color-error:          #C93B3B;
+      --color-error-light:    #FDE8E8;
+      --color-actor-1:        #D94F30; /* HTML/UI */
+      --color-actor-2:        #2A7B9B; /* State/JS */
+      --color-actor-3:        #7B6DAA; /* React */
+
+      /* --- FONTS & SPACING --- */
+      --font-display:  'Bricolage Grotesque', Georgia, serif;
+      --font-body:     'DM Sans', -apple-system, sans-serif;
+      --font-mono:     'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+      
+      --text-xs: 0.75rem; --text-sm: 0.875rem; --text-base: 1rem;
+      --text-lg: 1.125rem; --text-xl: 1.25rem; --text-2xl: 1.5rem;
+      --text-3xl: 1.875rem; --text-4xl: 2.25rem; --text-6xl: 3.75rem;
+      
+      --leading-normal: 1.6;
+      --space-2: 0.5rem; --space-3: 0.75rem; --space-4: 1rem; --space-6: 1.5rem; --space-8: 2rem; --space-12: 3rem; --space-16: 4rem;
+      
+      --content-width: 800px;
+      --nav-height: 50px;
+      --radius-sm: 8px; --radius-md: 12px;
+      --shadow-sm: 0 1px 2px rgba(44, 42, 40, 0.05);
+      --shadow-md: 0 4px 12px rgba(44, 42, 40, 0.08);
+      --shadow-lg: 0 8px 24px rgba(44, 42, 40, 0.1);
+      
+      --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+      --duration-fast: 150ms; --duration-normal: 300ms; --duration-slow: 500ms;
+    }
+
+    body {
+      background: var(--color-bg);
+      background-image: radial-gradient(ellipse at 20% 50%, rgba(217, 79, 48, 0.03) 0%, transparent 50%);
+      color: var(--color-text);
+      font-family: var(--font-body);
+      line-height: var(--leading-normal);
+      margin: 0; padding: 0;
+    }
+
+    h1, h2, h3 { font-family: var(--font-display); line-height: 1.15; margin-top: 0; }
+    
+    /* Scroll Behavior & Layout */
+    html { scroll-snap-type: y proximity; scroll-behavior: smooth; }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 9999px; }
+
+    .module {
+      min-height: 100dvh; scroll-snap-align: start;
+      padding: var(--space-16) var(--space-6);
+      padding-top: calc(var(--nav-height) + var(--space-12));
+    }
+    .module-content { max-width: var(--content-width); margin: 0 auto; }
+    
+    .module-number { font-size: var(--text-6xl); font-family: var(--font-display); font-weight: 800; color: var(--color-accent); opacity: 0.15; display: block; margin-bottom: -10px; }
+    .module-title { font-size: var(--text-4xl); font-weight: 700; margin-bottom: var(--space-2); }
+    .module-subtitle { font-size: var(--text-xl); color: var(--color-text-secondary); margin-bottom: var(--space-12); }
+    .screen { margin-bottom: var(--space-16); }
+
+    /* Nav */
+    .nav { position: fixed; top: 0; width: 100%; height: var(--nav-height); background: rgba(250,247,242,0.9); backdrop-filter: blur(10px); z-index: 100; border-bottom: 1px solid var(--color-border-light); }
+    .progress-bar { height: 3px; background: var(--color-accent); width: 0%; transition: width 0.1s linear; }
+
+    /* Animations */
+    .animate-in { opacity: 0; transform: translateY(20px); transition: opacity var(--duration-slow) var(--ease-out), transform var(--duration-slow) var(--ease-out); }
+    .animate-in.visible { opacity: 1; transform: translateY(0); }
+
+    /* Tooltips */
+    .term { border-bottom: 1.5px dashed var(--color-accent-muted); cursor: pointer; position: relative; font-weight: 500; }
+    .term:hover { border-bottom-color: var(--color-accent); color: var(--color-accent); }
+    .term-tooltip {
+      position: fixed; background: var(--color-bg-code); color: #CDD6F4;
+      padding: var(--space-3) var(--space-4); border-radius: var(--radius-sm);
+      font-size: var(--text-sm); font-family: var(--font-body); width: max(200px, min(320px, 80vw));
+      box-shadow: var(--shadow-lg); pointer-events: none; opacity: 0; transition: opacity var(--duration-fast); z-index: 10000;
+    }
+    .term-tooltip::after { content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%); border: 6px solid transparent; border-top-color: var(--color-bg-code); }
+    .term-tooltip.visible { opacity: 1; }
+
+    /* Code Translation Block */
+    .translation-block { display: grid; grid-template-columns: 1fr 1fr; border-radius: var(--radius-md); overflow: hidden; box-shadow: var(--shadow-md); margin: var(--space-8) 0; }
+    .translation-code { background: var(--color-bg-code); color: #CDD6F4; padding: var(--space-6); font-family: var(--font-mono); font-size: var(--text-sm); line-height: 1.7; position: relative; }
+    .translation-code pre, .translation-code code { white-space: pre-wrap; word-break: break-word; overflow-x: hidden; margin:0; }
+    .translation-english { background: var(--color-surface-warm); padding: var(--space-6); font-size: var(--text-sm); line-height: 1.7; border-left: 3px solid var(--color-accent); position: relative; }
+    .translation-label { position: absolute; top: var(--space-2); right: var(--space-3); font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.1em; opacity: 0.5; }
+    
+    .code-keyword { color: #CBA6F7; } .code-string { color: #A6E3A1; } .code-function { color: #89B4FA; }
+    .code-number { color: #FAB387; } .code-tag { color: #F38BA8; } .code-attr { color: #F9E2AF; }
+
+    /* Pattern Cards */
+    .pattern-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--space-4); margin: var(--space-8) 0; }
+    .pattern-card { background: var(--color-surface); border-radius: var(--radius-md); padding: var(--space-6); box-shadow: var(--shadow-sm); }
+    .pattern-icon { width: 40px; height: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; margin-bottom: var(--space-3); color: white; }
+    
+    /* Callout */
+    .callout { display: flex; gap: var(--space-4); padding: var(--space-4); border-radius: var(--radius-md); margin: var(--space-8) 0; }
+    .callout-accent { background: var(--color-accent-light); border-left: 4px solid var(--color-accent); }
+    
+    /* Chat Animation */
+    .chat-window { background: var(--color-surface); border-radius: var(--radius-md); box-shadow: var(--shadow-md); padding: var(--space-6); margin: var(--space-8) 0; }
+    .chat-messages { display: flex; flex-direction: column; gap: var(--space-4); margin-bottom: var(--space-6); min-height: 250px;}
+    .chat-message { display: flex; gap: var(--space-3); align-items: flex-start; }
+    .chat-avatar { width: 32px; height: 32px; border-radius: 50%; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-family: var(--font-display); flex-shrink: 0;}
+    .chat-bubble { background: var(--color-bg-warm); padding: var(--space-3) var(--space-4); border-radius: 0 var(--radius-md) var(--radius-md) var(--radius-md); font-size: var(--text-sm); }
+    .chat-sender { font-weight: bold; font-size: var(--text-xs); margin-bottom: 4px; display: block; }
+    .chat-bubble p { margin: 0; }
+    .chat-controls button { background: var(--color-text); color: white; border: none; padding: 8px 16px; border-radius: var(--radius-sm); cursor: pointer; font-family: var(--font-body); font-weight: 500;}
+    .chat-controls button:hover { background: var(--color-text-secondary); }
+    
+    .chat-typing { display: flex; gap: var(--space-3); align-items: center; }
+    .typing-dots { display: flex; gap: 4px; background: var(--color-bg-warm); padding: 12px 16px; border-radius: 0 var(--radius-md) var(--radius-md) var(--radius-md); }
+    .typing-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--color-text-muted); animation: typingBounce 1.4s infinite; }
+    .typing-dot:nth-child(2) { animation-delay: 0.2s; } .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes typingBounce { 0%, 60%, 100% { transform: translateY(0); } 30% { transform: translateY(-4px); } }
+    @keyframes fadeSlideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+    button { font-family: var(--font-body); }
+  </style>
+</head>
+<body>
+
+  <nav class="nav">
+    <div class="progress-bar" id="progress-bar"></div>
+  </nav>
+
+  <section class="module" id="module-1" style="background: var(--color-bg)">
+    <div class="module-content">
+      <header class="module-header animate-in">
+        <span class="module-number">01</span>
+        <h1 class="module-title">前端三剑客与运行环境</h1>
+        <p class="module-subtitle">代码是如何变成你在屏幕上看到的一切的？</p>
+      </header>
+
+      <div class="module-body">
+        <section class="screen animate-in">
+          <h2>建造一座篮球馆</h2>
+          <p>作为一名球队经理，如果你要建造一座数字化的篮球馆（也就是一个网页），你需要三种截然不同的工种配合。这就是前端的“三剑客”：HTML、CSS 和 JavaScript。</p>
+          
+          <div class="pattern-cards">
+            <div class="pattern-card" style="border-top: 3px solid #D94F30">
+              <div class="pattern-icon" style="background: #D94F30">🏗️</div>
+              <h4>HTML (骨架)</h4>
+              <p>球馆的钢筋水泥。它定义了哪里是球场、哪里是记分牌、哪里是观众席。它只管“结构”，不管好看。</p>
+            </div>
+            <div class="pattern-card" style="border-top: 3px solid #2A7B9B">
+              <div class="pattern-icon" style="background: #2A7B9B">🎨</div>
+              <h4>CSS (装修)</h4>
+              <p>球馆的涂装。地板铺上实木，油漆区刷上球队专属配色，大屏幕调整到合适的亮度。它负责“样式”。</p>
+            </div>
+            <div class="pattern-card" style="border-top: 3px solid #D4A843">
+              <div class="pattern-icon" style="background: #D4A843">⚡</div>
+              <h4>JavaScript (电路)</h4>
+              <p>球馆的通电系统。进球时记分牌数字翻动，24秒违例时蜂鸣器响起。它负责一切“交互和行为”。</p>
+            </div>
+          </div>
+        </section>
+
+        <section class="screen animate-in">
+          <h2>代码翻译：球员得分追踪器</h2>
+          <p>让我们看看这三者是如何在一个真实的记分功能中协作的。这是一段由 JS 驱动的简单代码：</p>
+
+          <div class="translation-block">
+            <div class="translation-code">
+              <span class="translation-label">CODE</span>
+              <pre><code><span class="code-keyword">let</span> score = <span class="code-number">0</span>;
+
+<span class="code-keyword">function</span> <span class="code-function">addTwoPoints</span>() {
+  score = score + <span class="code-number">2</span>;
+  <span class="code-keyword">const</span> board = <span class="code-function">document.getElementById</span>(<span class="code-string">'scoreboard'</span>);
+  board.textContent = score;
+}</code></pre>
+            </div>
+            <div class="translation-english">
+              <span class="translation-label">PLAIN ENGLISH</span>
+              <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 25px;">
+                <p>1. 在大脑中记住一个变量（球员分数），初始值为 0。</p>
+                <p>2. 定义一个动作叫“得两分”。</p>
+                <p>3. 当动作发生时，把大脑里的分数加 2。</p>
+                <p>4. 在 HTML 的骨架中，找到那个 ID 为“scoreboard”（记分牌）的区域。</p>
+                <p>5. 把记分牌上显示的文字，强行替换成我们刚刚计算出的新分数。</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="callout callout-accent">
+            <div class="callout-icon">💡</div>
+            <div class="callout-content">
+              <strong class="callout-title">这就是操控 DOM</strong>
+              <p>刚才代码里寻找记分牌的动作，就是在操作 <span class="term" data-definition="Document Object Model。浏览器把你写的 HTML 代码解析成一棵像城市地图一样的倒置树状结构，让 JavaScript 可以像 GPS 定位一样精准找到任何一个元素并修改它。">DOM</span>。原生 JS 就像是一个亲力亲为的工人，每次数据变了，都要亲自跑去大屏幕前把数字换掉。</p>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </section>
+
+  <section class="module" id="module-2" style="background: var(--color-bg-warm)">
+    <div class="module-content">
+      <header class="module-header animate-in">
+        <span class="module-number">02</span>
+        <h1 class="module-title">React 与状态管理</h1>
+        <p class="module-subtitle">为什么我们需要现代前端框架？</p>
+      </header>
+
+      <div class="module-body">
+        <section class="screen animate-in">
+          <h2>从“手动推土机”到“城市规划局”</h2>
+          <p>如果你玩过《城市：天际线 (Cities: Skylines)》，你一定懂这个道理：当城市很小的时候，你可以手动去建每一栋房子。但在几万人的大城市里，如果你还要手动去拆建每一栋楼，你会崩溃的。</p>
+          <p>原生 JavaScript 就喜欢“手动造房子”（手动操作 DOM）。而 <strong>React</strong> 就像是游戏里的“区域规划”功能：你只需要设定这块地是“商业区”还是“住宅区”（也就是设定<span class="term" data-definition="State，状态。页面当前的数据情况，比如购物车里有几件商品、当前登录的用户是谁、或者球员目前得了多少分。">状态 State</span>），系统会自动帮你建好对应的建筑（更新网页画面）。</p>
+        </section>
+
+        <section class="screen animate-in">
+          <h2>React 组件聊天室</h2>
+          <p>看看在 React 的世界里，当我们点击“进球”按钮时，幕后发生了什么样的对话：</p>
+
+          <div class="chat-window">
+            <div class="chat-messages" id="chat-messages">
+              <div class="chat-message" data-msg="0" data-sender="actor-a" style="display:none">
+                <div class="chat-avatar" style="background: var(--color-actor-1)">Btn</div>
+                <div class="chat-bubble">
+                  <span class="chat-sender" style="color: var(--color-actor-1)">Button (按钮组件)</span>
+                  <p>嘿，教练！用户刚刚点击了我，球员投进了一个三分球！</p>
+                </div>
+              </div>
+              <div class="chat-message" data-msg="1" data-sender="actor-2" style="display:none">
+                <div class="chat-avatar" style="background: var(--color-actor-2)">St</div>
+                <div class="chat-bubble">
+                  <span class="chat-sender" style="color: var(--color-actor-2)">State (状态总管)</span>
+                  <p>收到！我现在把记录簿上的总得分从 20 修改为 23。我更新完了，准备广播！</p>
+                </div>
+              </div>
+              <div class="chat-message" data-msg="2" data-sender="actor-3" style="display:none">
+                <div class="chat-avatar" style="background: var(--color-actor-3)">Re</div>
+                <div class="chat-bubble">
+                  <span class="chat-sender" style="color: var(--color-actor-3)">React 引擎</span>
+                  <p>大家注意，状态已经改变！我正在对比新旧蓝图（虚拟 DOM）... 发现只有“记分牌”区域需要更新。其他区域不用动！</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="chat-typing" id="chat-typing" style="display:none">
+              <div class="chat-avatar" id="typing-avatar">?</div>
+              <div class="typing-dots">
+                <span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span>
+              </div>
+            </div>
+
+            <div class="chat-controls">
+              <button onclick="playChatNext()">看下一步</button>
+              <button onclick="resetChat()">重新看</button>
+            </div>
+          </div>
+          <p style="font-size: var(--text-sm); color: var(--color-text-muted);">这就叫 <strong>“状态驱动视图”</strong>。你再也不用写 <code>document.getElementById</code> 去手动修改画面了。你只管数据，React 管画面。</p>
+        </section>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    // --- Scroll Progress ---
+    const progressBar = document.getElementById('progress-bar');
+    window.addEventListener('scroll', () => {
+      const scrollTop = window.scrollY;
+      const scrollHeight = document.documentElement.scrollHeight - window.innerHeight;
+      progressBar.style.width = (scrollTop / scrollHeight) * 100 + '%';
+    }, { passive: true });
+
+    // --- Animate In (Intersection Observer) ---
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
+          observer.unobserve(entry.target);
+        }
+      });
+    }, { rootMargin: '0px 0px -10% 0px', threshold: 0.1 });
+    document.querySelectorAll('.animate-in').forEach(el => observer.observe(el));
+
+    // --- Tooltips ---
+    let activeTooltip = null;
+    function positionTooltip(term, tip) {
+      const rect = term.getBoundingClientRect();
+      const tipWidth = 280; 
+      let left = rect.left + rect.width / 2 - tipWidth / 2;
+      left = Math.max(8, Math.min(left, window.innerWidth - tipWidth - 8));
+      
+      document.body.appendChild(tip);
+      const tipHeight = tip.offsetHeight;
+      
+      if (rect.top - tipHeight - 8 < 0) {
+        tip.style.top = (rect.bottom + 8) + 'px'; // flip below
+        tip.classList.add('flip');
+      } else {
+        tip.style.top = (rect.top - tipHeight - 8) + 'px'; // above
+        tip.classList.remove('flip');
+      }
+      tip.style.left = left + 'px';
+    }
+
+    document.querySelectorAll('.term').forEach(term => {
+      const tip = document.createElement('span');
+      tip.className = 'term-tooltip';
+      tip.textContent = term.dataset.definition;
+
+      term.addEventListener('mouseenter', () => {
+        if (activeTooltip) activeTooltip.remove();
+        positionTooltip(term, tip);
+        requestAnimationFrame(() => tip.classList.add('visible'));
+        activeTooltip = tip;
+      });
+
+      term.addEventListener('mouseleave', () => {
+        tip.classList.remove('visible');
+        setTimeout(() => { if (!tip.classList.contains('visible')) tip.remove(); }, 150);
+        activeTooltip = null;
+      });
+    });
+
+    // --- Chat Animation ---
+    let chatIndex = 0;
+    const chatMessages = document.querySelectorAll('#chat-messages .chat-message');
+    const actors = {
+      'actor-a': { initials: 'Btn', color: 'var(--color-actor-1)' },
+      'actor-2': { initials: 'St', color: 'var(--color-actor-2)' },
+      'actor-3': { initials: 'Re', color: 'var(--color-actor-3)' },
+    };
+
+    window.playChatNext = function() {
+      if (chatIndex >= chatMessages.length) return;
+      const msg = chatMessages[chatIndex];
+      const sender = msg.dataset.sender;
+
+      const typing = document.getElementById('chat-typing');
+      const avatar = document.getElementById('typing-avatar');
+      avatar.textContent = actors[sender].initials;
+      avatar.style.background = actors[sender].color;
+      typing.style.display = 'flex';
+
+      setTimeout(() => {
+        typing.style.display = 'none';
+        msg.style.display = 'flex';
+        msg.style.animation = 'fadeSlideUp 0.3s var(--ease-out)';
+        chatIndex++;
+      }, 800);
+    };
+
+    window.resetChat = function() {
+      chatIndex = 0;
+      chatMessages.forEach(msg => msg.style.display = 'none');
+      document.getElementById('chat-typing').style.display = 'none';
+    };
+  </script>
+</body>
+</html>
