@@ -1,11 +1,16 @@
 import json
+import os
 import subprocess
 from openai import OpenAI
+from dotenv import load_dotenv
 
-client = OpenAI(
-    api_key="sk-564fde221f4b44beb00e09865b5f615b",
-    base_url="https://api.deepseek.com"
-)
+load_dotenv()
+
+api_key = os.getenv("DEEPSEEK_API_KEY")
+if not api_key:
+    raise ValueError("请先设置环境变量 DEEPSEEK_API_KEY")
+
+client = OpenAI(api_key=api_key, base_url="https://api.deepseek.com")
 
 # --- 工具描述 ---
 tools = [
