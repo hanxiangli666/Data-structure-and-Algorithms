@@ -17,6 +17,7 @@ int main() {
         total += new_cigs;
     }
 
+    
     cout << total << endl;
 
     return 0;
