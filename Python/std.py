@@ -13,6 +13,5 @@ s = "abc"
 # 输出：abc 10
 print(s, a)
 
-# 格式化输出
 # 输出：abc 10
 print(f"{s} {a}")
